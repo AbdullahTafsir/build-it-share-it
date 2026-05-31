@@ -14,7 +14,171 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activity: {
+        Row: {
+          action: string
+          detail: string | null
+          id: string
+          ts: string
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          detail?: string | null
+          id?: string
+          ts?: string
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          detail?: string | null
+          id?: string
+          ts?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
+      app_settings: {
+        Row: {
+          breaks: Json
+          id: number
+          num_cutters: number
+          shift_end: string
+          shift_start: string
+          updated_at: string
+        }
+        Insert: {
+          breaks?: Json
+          id: number
+          num_cutters?: number
+          shift_end?: string
+          shift_start?: string
+          updated_at?: string
+        }
+        Update: {
+          breaks?: Json
+          id?: number
+          num_cutters?: number
+          shift_end?: string
+          shift_start?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lays: {
+        Row: {
+          buyer: string | null
+          color: string | null
+          created_at: string
+          cut_dur: number | null
+          id: string
+          lay_no: string | null
+          plan_date: string
+          plies: number | null
+          priority: number | null
+          session: string | null
+          spread_dur: number | null
+          spread_start: string | null
+          spreader: number | null
+          style: string | null
+        }
+        Insert: {
+          buyer?: string | null
+          color?: string | null
+          created_at?: string
+          cut_dur?: number | null
+          id?: string
+          lay_no?: string | null
+          plan_date: string
+          plies?: number | null
+          priority?: number | null
+          session?: string | null
+          spread_dur?: number | null
+          spread_start?: string | null
+          spreader?: number | null
+          style?: string | null
+        }
+        Update: {
+          buyer?: string | null
+          color?: string | null
+          created_at?: string
+          cut_dur?: number | null
+          id?: string
+          lay_no?: string | null
+          plan_date?: string
+          plies?: number | null
+          priority?: number | null
+          session?: string | null
+          spread_dur?: number | null
+          spread_start?: string | null
+          spreader?: number | null
+          style?: string | null
+        }
+        Relationships: []
+      }
+      plans: {
+        Row: {
+          created_at: string
+          id: string
+          idle_windows: Json | null
+          input_lays: Json | null
+          name: string
+          plan_date: string
+          result: Json | null
+          settings: Json | null
+          summary: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idle_windows?: Json | null
+          input_lays?: Json | null
+          name: string
+          plan_date: string
+          result?: Json | null
+          settings?: Json | null
+          summary?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idle_windows?: Json | null
+          input_lays?: Json | null
+          name?: string
+          plan_date?: string
+          result?: Json | null
+          settings?: Json | null
+          summary?: Json | null
+        }
+        Relationships: []
+      }
+      styles: {
+        Row: {
+          buyer: string | null
+          code: string
+          created_at: string
+          default_cut_dur: number | null
+          description: string | null
+          id: string
+        }
+        Insert: {
+          buyer?: string | null
+          code: string
+          created_at?: string
+          default_cut_dur?: number | null
+          description?: string | null
+          id?: string
+        }
+        Update: {
+          buyer?: string | null
+          code?: string
+          created_at?: string
+          default_cut_dur?: number | null
+          description?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
