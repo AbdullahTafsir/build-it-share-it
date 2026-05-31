@@ -630,12 +630,18 @@ alter table public.activity enable row level security;
 
 grant select,insert,update,delete on public.app_settings,public.styles,public.lays,public.plans,public.activity to anon, authenticated;
 
-do $$ begin
-  for t in select unnest(array['app_settings','styles','lays','plans','activity']) loop
-    execute format('drop policy if exists "anon_all" on public.%I', t);
-    execute format('create policy "anon_all" on public.%I for all to anon using (true) with check (true)', t);
-  end loop;
-end $$;`;
+grant select,insert,update,delete on public.app_settings,public.styles,public.lays,public.plans,public.activity to anon, authenticated;
+
+drop policy if exists "anon_all" on public.app_settings;
+create policy "anon_all" on public.app_settings for all to anon using (true) with check (true);
+drop policy if exists "anon_all" on public.styles;
+create policy "anon_all" on public.styles for all to anon using (true) with check (true);
+drop policy if exists "anon_all" on public.lays;
+create policy "anon_all" on public.lays for all to anon using (true) with check (true);
+drop policy if exists "anon_all" on public.plans;
+create policy "anon_all" on public.plans for all to anon using (true) with check (true);
+drop policy if exists "anon_all" on public.activity;
+create policy "anon_all" on public.activity for all to anon using (true) with check (true);`;
 
 // ─── UTILS ───────────────────────────────────
 const toMin  = t => { const p=t.split(':'); return +p[0]*60+ +p[1]; };
