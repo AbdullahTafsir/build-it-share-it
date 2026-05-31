@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cutting Dept — Gantt Planning System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --blue:#1A5FA8;--blue-lt:#E8F1FB;--blue-dk:#0C3F73;
+  --orange:#C55A11;--orange-lt:#FCE9D8;
+  --purple:#5B3FA0;--purple-lt:#EDE8FB;
+  --green:#2E7D32;--green-lt:#E8F5E9;
+  --red:#B71C1C;--red-lt:#FFEBEE;
+  --amber:#854F0B;--amber-lt:#FFF8E1;
+  --teal:#0F6E56;--teal-lt:#E1F5EE;
+  --gray1:#F7F8FA;--gray2:#ECEEF2;--gray3:#D0D4DC;
+  --gray4:#9099A8;--gray5:#4A5568;--gray6:#1A202C;
+  --shadow:0 4px 20px rgba(0,0,0,.08);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.1);
+  --radius:8px;--radius-lg:14px;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:#F0F2F7;color:var(--gray6);font-size:14px;line-height:1.5}
+
+/* ════ SPLASH ════ */
+.splash{position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(140deg,#071D3B 0%,#0C3F73 40%,#0A5240 100%);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  transition:opacity .5s,visibility .5s}
+.splash.out{opacity:0;visibility:hidden;pointer-events:none}
+.splash-logo{width:90px;height:90px;background:rgba(255,255,255,.12);border-radius:24px;
+  display:flex;align-items:center;justify-content:center;font-size:46px;
+  margin-bottom:22px;box-shadow:0 8px 40px rgba(0,0,0,.3);
+  animation:pop .7s cubic-bezier(.34,1.56,.64,1) both}
+.splash-title{font-size:32px;font-weight:700;color:#fff;letter-spacing:-.02em;margin-bottom:6px;animation:rise .5s .1s ease both}
+.splash-sub{font-size:14px;color:rgba(255,255,255,.55);margin-bottom:40px;animation:rise .5s .2s ease both}
+.splash-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:44px;animation:rise .5s .3s ease both}
+.sp{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);padding:5px 14px;
+  border-radius:20px;font-size:12px;font-weight:500;border:1px solid rgba(255,255,255,.18)}
+.splash-btn{background:#fff;color:#0C3F73;border:none;padding:14px 52px;
+  border-radius:var(--radius-lg);font-family:var(--font);font-size:15px;font-weight:700;
+  cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,.25);
+  transition:transform .15s,box-shadow .15s;animation:rise .5s .4s ease both}
+.splash-btn:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.splash-btn:active{transform:scale(.97)}
+.splash-foot{position:absolute;bottom:22px;font-size:11px;color:rgba(255,255,255,.3);animation:rise .5s .5s ease both}
+@keyframes pop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* ════ SETUP WIZARD ════ */
+.setup-bg{position:fixed;inset:0;z-index:9000;
+  background:linear-gradient(140deg,#071D3B 0%,#0C3F73 50%,#0A5240 100%);
+  display:none;align-items:center;justify-content:center}
+.setup-bg.show{display:flex}
+.setup-card{background:#fff;border-radius:20px;padding:36px 40px;width:520px;
+  max-width:95vw;box-shadow:0 16px 64px rgba(0,0,0,.3)}
+.setup-logo{width:56px;height:56px;background:var(--blue-lt);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:20px}
+.setup-title{font-size:22px;font-weight:700;color:var(--gray6);margin-bottom:6px}
+.setup-sub{font-size:13px;color:var(--gray4);margin-bottom:24px;line-height:1.7}
+.setup-step{background:var(--gray1);border-radius:var(--radius);padding:14px 16px;
+  margin-bottom:12px;font-size:13px;color:var(--gray5);line-height:1.8;border:1px solid var(--gray2)}
+.setup-step strong{color:var(--blue)}
+.setup-field{margin-bottom:14px}
+.setup-field label{display:block;font-size:11px;font-weight:700;color:var(--gray4);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.setup-field input{width:100%;padding:11px 14px;font-family:var(--font);font-size:13px;
+  border:1.5px solid var(--gray3);border-radius:var(--radius);outline:none;
+  transition:border .15s;background:#fff;color:var(--gray6)}
+.setup-field input:focus{border-color:var(--blue)}
+.setup-field .hint{font-size:11px;color:var(--gray4);margin-top:4px}
+.setup-err{background:var(--red-lt);color:var(--red);padding:10px 14px;
+  border-radius:var(--radius);font-size:13px;margin-bottom:12px;display:none;border-left:3px solid var(--red)}
+.setup-ok{background:var(--green-lt);color:var(--green);padding:10px 14px;
+  border-radius:var(--radius);font-size:13px;margin-bottom:12px;display:none;border-left:3px solid var(--green)}
+.step-dots{display:flex;gap:8px;margin-bottom:20px}
+.step-dot{width:28px;height:5px;border-radius:3px;background:var(--gray2)}
+.step-dot.done{background:var(--green)}.step-dot.active{background:var(--blue)}
+
+/* ════ APP ════ */
+#app{display:none}
+.topbar{background:var(--blue-dk);color:#fff;height:52px;display:flex;
+  align-items:center;justify-content:space-between;padding:0 20px;
+  position:sticky;top:0;z-index:200;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.tb-left{display:flex;align-items:center;gap:12px}
+.tb-logo{width:30px;height:30px;background:rgba(255,255,255,.15);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:16px}
+.tb-title{font-size:14px;font-weight:600}
+.tb-sub{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px}
+.tb-badge{background:rgba(255,255,255,.12);padding:3px 10px;border-radius:20px;font-size:11px;display:flex;align-items:center;gap:5px}
+.tb-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;
+  padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--font);transition:background .12s}
+.tb-btn:hover{background:rgba(255,255,255,.2)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot-ok{background:#4CAF50}.dot-err{background:#F44336}.dot-wait{background:#FFC107}
+
+.layout{display:flex;height:calc(100vh - 52px)}
+.sidebar{width:210px;flex-shrink:0;background:#fff;border-right:1px solid var(--gray2);
+  display:flex;flex-direction:column;overflow-y:auto}
+.main{flex:1;overflow-y:auto;padding:22px}
+
+.nav-grp{padding:14px 12px 4px;font-size:10px;font-weight:700;
+  color:var(--gray3);text-transform:uppercase;letter-spacing:.08em}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;
+  color:var(--gray5);font-size:13px;font-weight:500;
+  border-left:3px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{background:var(--gray1);color:var(--gray6)}
+.nav-item.active{background:var(--blue-lt);color:var(--blue);border-left-color:var(--blue);font-weight:600}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.6}
+.nav-item.active svg{opacity:1}
+
+.card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);
+  border:1px solid var(--gray2);padding:18px;margin-bottom:14px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:12px;font-weight:700;color:var(--gray5);text-transform:uppercase;
+  letter-spacing:.05em;display:flex;align-items:center;gap:7px}
+.card-title::before{content:'';display:block;width:3px;height:13px;background:var(--blue);border-radius:2px}
+
+.form-grid{display:grid;gap:10px}
+.fg2{grid-template-columns:1fr 1fr}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+.fg4{grid-template-columns:1fr 1fr 1fr 1fr}
+.field label{display:block;font-size:10px;font-weight:700;color:var(--gray4);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+input,select,textarea{width:100%;padding:7px 10px;font-family:var(--font);font-size:13px;
+  border:1.5px solid var(--gray3);border-radius:var(--radius);background:#fff;
+  color:var(--gray6);outline:none;transition:border .12s}
+input:focus,select:focus{border-color:var(--blue)}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;
+  font-family:var(--font);font-size:12px;font-weight:500;border-radius:var(--radius);
+  cursor:pointer;border:1.5px solid transparent;transition:all .12s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:var(--blue-dk)}
+.btn-success{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-success:hover{background:#1B5E20}
+.btn-warn{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn-danger{background:#fff;color:var(--red);border-color:var(--red)}
+.btn-danger:hover{background:var(--red-lt)}
+.btn-outline{background:#fff;color:var(--gray5);border-color:var(--gray3)}
+.btn-outline:hover{background:var(--gray1)}
+.btn-teal{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-lg{padding:11px 24px;font-size:14px;font-weight:700}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+
+.kpi-grid{display:grid;gap:10px;margin-bottom:18px}
+.kpi4{grid-template-columns:repeat(4,1fr)}.kpi3{grid-template-columns:repeat(3,1fr)}
+.kpi-card{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray2);padding:14px 16px}
+.kpi-val{font-size:26px;font-weight:700;line-height:1.1;margin-bottom:3px}
+.kpi-lbl{font-size:10px;color:var(--gray4);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.kpi-sub{font-size:11px;color:var(--gray4);margin-top:4px}
+.kc-blue .kpi-val{color:var(--blue)}.kc-purple .kpi-val{color:var(--purple)}
+.kc-green .kpi-val{color:var(--green)}.kc-red .kpi-val{color:var(--red)}
+.kc-orange .kpi-val{color:var(--orange)}
+
+.tbl-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--gray2);background:#fff}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--gray1);padding:8px 10px;text-align:left;font-size:10px;
+  font-weight:700;color:var(--gray4);text-transform:uppercase;letter-spacing:.06em;
+  white-space:nowrap;border-bottom:1px solid var(--gray2);position:sticky;top:0}
+tbody td{padding:7px 10px;border-bottom:1px solid var(--gray2);vertical-align:middle;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--gray1)}
+.mono{font-family:var(--mono);font-size:11px}
+
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.b-ok{background:var(--green-lt);color:var(--green)}.b-gap{background:var(--amber-lt);color:var(--amber)}
+.b-ot{background:var(--red-lt);color:var(--red)}.b-idle{background:var(--purple-lt);color:var(--purple)}
+.b-blue{background:var(--blue-lt);color:var(--blue)}.b-orange{background:var(--orange-lt);color:var(--orange)}
+.b-teal{background:var(--teal-lt);color:var(--teal)}
+
+.toast{position:fixed;bottom:22px;right:22px;color:#fff;padding:12px 18px;
+  border-radius:var(--radius-lg);font-size:13px;font-weight:500;
+  box-shadow:0 4px 20px rgba(0,0,0,.2);z-index:9998;display:none;max-width:360px}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:var(--radius-lg);padding:24px;width:500px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow)}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{cursor:pointer;color:var(--gray4);font-size:22px;line-height:1}
+
+/* Gantt */
+.gantt-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--gray2);background:#fff}
+.gantt-inner{min-width:1000px;padding:14px}
+.g-hdr{display:flex;align-items:flex-end;margin-bottom:5px}
+.g-lbl{width:155px;flex-shrink:0;font-size:9px;font-weight:700;color:var(--gray4);text-transform:uppercase}
+.g-tr{flex:1;position:relative;height:18px}
+.g-tick{position:absolute;font-size:9px;color:var(--gray4);transform:translateX(-50%);white-space:nowrap;font-family:var(--mono);font-weight:500}
+.g-row{display:flex;align-items:center;margin-bottom:4px}
+.g-rlbl{width:155px;flex-shrink:0}
+.g-rlbl-m{font-size:11px;font-weight:600;color:var(--gray6)}
+.g-rlbl-s{font-size:9px;color:var(--gray4)}
+.g-track{flex:1;position:relative;height:22px;background:var(--gray1);border-radius:3px;overflow:hidden}
+.g-bar{position:absolute;height:22px;display:flex;align-items:center;padding:0 5px;font-size:9px;font-weight:700;overflow:hidden;white-space:nowrap;border-radius:2px}
+.g-sp{background:var(--blue);color:#fff}.g-ct{background:var(--orange);color:#fff}
+.g-id{background:var(--purple);color:#fff;opacity:.9}.g-brk{background:var(--green);color:#fff;opacity:.85}
+.g-div{height:1px;background:var(--gray2);margin:6px 0;display:flex}
+.g-div-sp{width:155px;flex-shrink:0}.g-div-ln{flex:1}
+.g-sec{display:flex;align-items:center;margin-bottom:4px}
+.g-sec-lbl{width:155px;flex-shrink:0;font-size:9px;font-weight:700;color:var(--gray4);text-transform:uppercase}
+.g-sec-ln{flex:1;height:1px;background:var(--gray2)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding-top:10px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gray5)}
+.leg-sw{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+
+.prog-wrap{margin-bottom:9px}
+.prog-lbl-row{display:flex;justify-content:space-between;margin-bottom:4px}
+.prog-lbl{font-size:12px;color:var(--gray5);font-weight:500}
+.prog-pct{font-size:12px;font-weight:700}
+.prog-bar{height:9px;border-radius:20px;background:var(--gray2);overflow:hidden}
+.prog-fill{height:100%;border-radius:20px;transition:width .4s}
+
+.alert{border-radius:var(--radius);padding:11px 14px;font-size:13px;margin-bottom:12px;border-left:4px solid;line-height:1.6}
+.al-info{background:var(--blue-lt);color:var(--blue-dk);border-color:var(--blue)}
+.al-warn{background:var(--amber-lt);color:var(--amber);border-color:var(--amber)}
+.al-success{background:var(--green-lt);color:var(--green);border-color:var(--green)}
+
+.panel{display:none}.panel.active{display:block}
+.pg-hdr{margin-bottom:18px;display:flex;align-items:flex-start;justify-content:space-between}
+.pg-title{font-size:20px;font-weight:600}.pg-sub{font-size:12px;color:var(--gray4);margin-top:3px}
+
+.itbl{min-width:1150px}
+.itbl td{padding:4px 4px}
+.itbl td input,.itbl td select{padding:5px 7px;font-size:12px;border-width:1px}
+.brk-row{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:7px}
+
+.plan-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray2)}
+.plan-row:last-child{border-bottom:none}
+.plan-name{font-size:13px;font-weight:600}
+.plan-meta{font-size:11px;color:var(--gray4);margin-top:3px}
+.act-item{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--gray2);font-size:12px}
+.act-item:last-child{border-bottom:none}
+.act-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);margin-top:5px;flex-shrink:0}
+.idle-ev{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray2)}
+.idle-ev:last-child{border-bottom:none}
+.idle-time{font-size:12px;font-weight:600;font-family:var(--mono)}
+.idle-reason{font-size:11px;color:var(--gray4);margin-top:2px}
+.idle-fix{font-size:11px;color:var(--blue);margin-top:3px}
+.idle-dur{background:var(--purple-lt);color:var(--purple);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.rules-list{list-style:none}
+.rules-list li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray2);font-size:13px;color:var(--gray5);line-height:1.5}
+.rules-list li:last-child{border-bottom:none}
+.rule-n{width:20px;height:20px;background:var(--blue-lt);color:var(--blue);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}
+.loading{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--gray4);gap:10px;font-size:13px}
+.spin{width:18px;height:18px;border:2px solid var(--gray3);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* sync indicator */
+.sync-ring{display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:4px;display:none}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash" class="splash">
+  <div class="splash-logo">✂️</div>
+  <div class="splash-title">Cutting Department</div>
+  <div class="splash-sub">Gantt Planning System — Auto Spreader & Auto Cutter Scheduler</div>
+  <div class="splash-pills">
+    <span class="sp">📊 Gantt chart</span>
+    <span class="sp">⏱ Idle tracker</span>
+    <span class="sp">📋 Schedule table</span>
+    <span class="sp">📈 Analytics</span>
+    <span class="sp">💾 Plan history</span>
+    <span class="sp">☁️ Supabase sync</span>
+  </div>
+  <button class="splash-btn" onclick="startApp()">Enter System →</button>
+  <div class="splash-foot">All data syncs to Supabase automatically</div>
+</div>
+
+<!-- SETUP WIZARD -->
+<div class="setup-bg" id="setupScreen">
+  <div class="setup-card">
+    <div class="setup-logo">☁️</div>
+    <div class="step-dots">
+      <div class="step-dot active" id="sd1"></div>
+      <div class="step-dot" id="sd2"></div>
+      <div class="step-dot" id="sd3"></div>
+    </div>
+    <div class="setup-title">Connect to Supabase</div>
+    <div class="setup-sub">
+      This is a one-time setup. Your credentials are saved locally on this server.<br>
+      After this, all data syncs to Supabase automatically — no action needed.
+    </div>
+
+    <div class="setup-step">
+      <strong>Step 1:</strong> Go to <strong>supabase.com</strong> → open (or create) your project<br>
+      <strong>Step 2:</strong> Open the <strong>SQL Editor</strong> and run the schema below (click "Show SQL schema")<br>
+      <strong>Step 3:</strong> Go to <strong>Settings → API</strong> → copy <em>Project URL</em> and <em>anon public</em> key<br>
+      <strong>Step 4:</strong> Paste them below and click Connect
+    </div>
+
+    <details style="margin:10px 0 14px;font-size:12px">
+      <summary style="cursor:pointer;color:var(--blue);font-weight:600">📋 Show SQL schema (copy → paste in Supabase SQL Editor)</summary>
+      <pre id="schemaSql" style="background:#0C3F73;color:#E8F1FB;padding:12px;border-radius:8px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.5;margin-top:8px;max-height:260px"></pre>
+      <button class="btn btn-outline btn-sm" style="margin-top:6px" onclick="copySchema()">📋 Copy schema</button>
+    </details>
+
+    <div class="setup-err" id="setupErr"></div>
+    <div class="setup-ok"  id="setupOk"></div>
+
+    <div class="setup-field">
+      <label>Supabase Project URL</label>
+      <input type="text" id="sbUrl" placeholder="https://your-project-id.supabase.co">
+      <div class="hint">Settings → API → Project URL</div>
+    </div>
+    <div class="setup-field">
+      <label>Anon public key</label>
+      <input type="password" id="sbKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+      <div class="hint">Settings → API → Project API keys → <strong>anon public</strong> (safe to share)</div>
+    </div>
+
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn btn-primary btn-lg" id="connectBtn" onclick="connectSupabase()">
+        <span id="connectSpin" class="sync-ring"></span>
+        Connect to Supabase →
+      </button>
+    </div>
+
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray2);
+      font-size:12px;color:var(--gray4);line-height:1.8">
+      🔒 Credentials are saved in your browser's localStorage only — never sent anywhere except Supabase.<br>
+      🔄 All plans, lays, styles and settings sync to your Supabase project automatically.<br>
+      🌐 This is a single static HTML file — host it on GitHub Pages, Netlify, or open locally.
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-logo">✂️</div>
+      <div>
+        <div class="tb-title">Cutting Department — Gantt Planning System</div>
+        <div class="tb-sub">Auto Spreader & Auto Cutter Scheduler</div>
+      </div>
+    </div>
+    <div class="tb-right">
+      <div class="tb-badge" id="dbBadge"><span class="dot dot-wait" id="dbDot"></span><span id="dbText">Connecting...</span></div>
+      <div class="tb-badge" id="topStatus">Ready</div>
+      <button class="tb-btn" onclick="goHome()">🏠 Home</button>
+      <button class="tb-btn" onclick="openModal('settingsModal')" title="Supabase settings">⚙</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="nav-grp">Planning</div>
+      <div class="nav-item active" onclick="switchPanel('input')" id="nav-input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>Input data
+      </div>
+      <div class="nav-item" onclick="switchPanel('gantt')" id="nav-gantt">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Gantt chart
+      </div>
+      <div class="nav-item" onclick="switchPanel('schedule')" id="nav-schedule">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Schedule table
+      </div>
+      <div class="nav-grp">Analysis</div>
+      <div class="nav-item" onclick="switchPanel('dashboard')" id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard
+      </div>
+      <div class="nav-item" onclick="switchPanel('idle')" id="nav-idle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Idle tracker
+      </div>
+      <div class="nav-item" onclick="switchPanel('analytics')" id="nav-analytics">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Analytics
+      </div>
+      <div class="nav-grp">Data</div>
+      <div class="nav-item" onclick="switchPanel('plans')" id="nav-plans">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Saved plans
+      </div>
+      <div class="nav-item" onclick="switchPanel('styles')" id="nav-styles">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>Styles master
+      </div>
+      <div class="nav-item" onclick="switchPanel('activity')" id="nav-activity">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Activity log
+      </div>
+    </nav>
+
+    <main class="main">
+
+      <!-- INPUT -->
+      <div class="panel active" id="panel-input">
+        <div class="pg-hdr">
+          <div><div class="pg-title">Input data</div>
+          <div class="pg-sub">Enter lay data → click Generate — everything saves to Supabase automatically</div></div>
+          <div class="btn-row" style="margin:0">
+            <button class="btn btn-outline btn-sm" onclick="loadTodayLays()">📂 Load from DB</button>
+            <button class="btn btn-outline btn-sm" onclick="loadSampleData()">📋 Sample data</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Shift settings</div></div>
+          <div class="form-grid fg4">
+            <div class="field"><label>Shift start</label><input type="time" id="shiftStart" value="07:00"></div>
+            <div class="field"><label>Shift end</label><input type="time" id="shiftEnd" value="18:00"></div>
+            <div class="field"><label>Auto cutters</label>
+              <select id="numCutters"><option>1</option><option selected>2</option><option>3</option></select></div>
+            <div class="field"><label>Plan date</label><input type="date" id="planDate"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Break settings</div>
+            <button class="btn btn-outline btn-sm" onclick="addBreak()">+ Add break</button></div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 36px;gap:8px;margin-bottom:6px">
+            <span style="font-size:10px;font-weight:700;color:var(--gray4);text-transform:uppercase">Break name</span>
+            <span style="font-size:10px;font-weight:700;color:var(--gray4);text-transform:uppercase">From</span>
+            <span style="font-size:10px;font-weight:700;color:var(--gray4);text-transform:uppercase">To</span>
+            <span></span>
+          </div>
+          <div id="breakRows"></div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Lay input table</div>
+            <div class="btn-row" style="margin:0">
+              <button class="btn btn-primary btn-sm" onclick="addLayRow({})">+ Add lay</button>
+              <button class="btn btn-danger btn-sm" onclick="clearLays()">🗑 Clear all</button>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table class="itbl">
+              <thead><tr>
+                <th>Priority</th><th>Session</th><th>Lay no.</th><th>Style</th>
+                <th>Buyer</th><th>Color</th><th>Plies</th><th>Spreader</th>
+                <th>Spread start</th><th>Spread dur (min)</th><th>Cut dur (min)</th><th></th>
+              </tr></thead>
+              <tbody id="layBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-lg" onclick="generatePlan()">▶ Generate &amp; Save to Supabase</button>
+          <button class="btn btn-success" onclick="saveLaysToDB()">💾 Save lays to Supabase</button>
+          <button class="btn btn-warn" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+      </div>
+
+      <!-- GANTT -->
+      <div class="panel" id="panel-gantt">
+        <div class="pg-hdr">
+          <div><div class="pg-title">Gantt chart</div>
+          <div class="pg-sub" id="ganttSub">Generate a plan to see the Gantt</div></div>
+          <button class="btn btn-warn btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+        <div class="kpi-grid kpi4" id="ganttKpi"></div>
+        <div class="gantt-wrap">
+          <div class="gantt-inner" id="ganttOuter">
+            <div class="loading"><div class="spin"></div>Generate a plan to see the Gantt chart</div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-sw" style="background:var(--blue)"></div>Spreading</div>
+          <div class="leg-item"><div class="leg-sw" style="background:var(--orange)"></div>Cutting</div>
+          <div class="leg-item"><div class="leg-sw" style="background:var(--purple)"></div>Cutter idle</div>
+          <div class="leg-item"><div class="leg-sw" style="background:var(--green)"></div>Break/Lunch</div>
+        </div>
+      </div>
+
+      <!-- SCHEDULE -->
+      <div class="panel" id="panel-schedule">
+        <div class="pg-hdr"><div><div class="pg-title">Schedule table</div>
+        <div class="pg-sub">Full lay-by-lay schedule with all timing and status</div></div></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Pri</th><th>Lay no.</th><th>Style</th><th>Buyer</th><th>Color</th><th>Plies</th>
+              <th>Spreader</th><th>Spread start</th><th>Spread end</th><th>Spr dur</th>
+              <th>Cutter</th><th>Cut start</th><th>Cut end</th><th>Cut dur</th>
+              <th>Cutter idle</th><th>Table wait</th><th>Status</th>
+            </tr></thead>
+            <tbody id="schedBody">
+              <tr><td colspan="17" style="text-align:center;padding:32px;color:var(--gray4)">Generate a plan to see the schedule.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="schedFooter" style="margin-top:10px;font-size:12px;color:var(--gray4)"></div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="panel" id="panel-dashboard">
+        <div class="pg-hdr"><div><div class="pg-title">Dashboard</div>
+        <div class="pg-sub">KPI summary, utilization and planning rules</div></div></div>
+        <div id="dashContent"><div class="loading"><div class="spin"></div>Generate a plan first</div></div>
+      </div>
+
+      <!-- IDLE -->
+      <div class="panel" id="panel-idle">
+        <div class="pg-hdr"><div><div class="pg-title">Idle time tracker</div>
+        <div class="pg-sub">Every cutter idle window with root cause and recommended fix</div></div></div>
+        <div id="idleContent"><div class="loading"><div class="spin"></div>Generate a plan first</div></div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="panel" id="panel-analytics">
+        <div class="pg-hdr"><div><div class="pg-title">Analytics</div>
+        <div class="pg-sub">Historical performance across all plans in Supabase</div></div></div>
+        <div class="kpi-grid kpi3" id="analyticsKpi"></div>
+        <div class="card" id="analyticsTable"><div class="loading"><div class="spin"></div>Loading...</div></div>
+      </div>
+
+      <!-- PLANS -->
+      <div class="panel" id="panel-plans">
+        <div class="pg-hdr"><div><div class="pg-title">Saved plans</div>
+        <div class="pg-sub">All plans stored in Supabase — load any plan to restore full data</div></div></div>
+        <div class="card" id="plansList"><div class="loading"><div class="spin"></div>Loading plans...</div></div>
+      </div>
+
+      <!-- STYLES -->
+      <div class="panel" id="panel-styles">
+        <div class="pg-hdr">
+          <div><div class="pg-title">Styles master</div>
+          <div class="pg-sub">Style codes saved in Supabase — used for auto-fill in lay table</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openModal('addStyleModal')">+ Add style</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Style code</th><th>Buyer</th><th>Description</th><th>Default cut dur</th><th>Action</th></tr></thead>
+            <tbody id="stylesBody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--gray4)">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ACTIVITY -->
+      <div class="panel" id="panel-activity">
+        <div class="pg-hdr"><div><div class="pg-title">Activity log</div>
+        <div class="pg-sub">Every action logged to Supabase in real time</div></div></div>
+        <div class="card" id="activityList"><div class="loading"><div class="spin"></div>Loading...</div></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Supabase Settings Modal -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <div class="modal-title">Supabase connection <span class="modal-close" onclick="closeModal('settingsModal')">×</span></div>
+    <div id="settingsModalContent"></div>
+  </div>
+</div>
+
+<!-- Add Style Modal -->
+<div class="modal-bg" id="addStyleModal">
+  <div class="modal">
+    <div class="modal-title">Add style <span class="modal-close" onclick="closeModal('addStyleModal')">×</span></div>
+    <div class="form-grid fg2">
+      <div class="field"><label>Style code</label><input type="text" id="nsCode" placeholder="DP2772"></div>
+      <div class="field"><label>Buyer</label><input type="text" id="nsBuyer" placeholder="UA"></div>
+      <div class="field"><label>Description</label><input type="text" id="nsDesc" placeholder="Polo shirt"></div>
+      <div class="field"><label>Default cut dur (min)</label><input type="number" id="nsCutDur" value="40" min="1"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="addStyle()">Save to Supabase</button>
+      <button class="btn btn-outline" onclick="closeModal('addStyleModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<datalist id="styleDatalist"></datalist>
+
+<script>
+// ─── STATE ───────────────────────────────────
+let breaksList=[], lays=[], rowId=0, stylesMaster=[], currentPlan=null, dbConnected=false;
+let sb=null;
+
+// ─── SQL SCHEMA (run once in Supabase SQL editor) ──
+const SCHEMA_SQL = `-- Cutting Dept Gantt — Supabase schema
+create table if not exists public.app_settings (
+  id int primary key default 1,
+  shift_start text default '07:00',
+  shift_end text default '18:00',
+  num_cutters int default 2,
+  breaks jsonb default '[]'::jsonb
+);
+insert into public.app_settings (id) values (1) on conflict do nothing;
+
+create table if not exists public.styles (
+  id uuid primary key default gen_random_uuid(),
+  code text unique not null,
+  buyer text, description text,
+  default_cut_dur int default 30,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.lays (
+  id uuid primary key default gen_random_uuid(),
+  plan_date date not null,
+  priority int, session text, lay_no text,
+  style text, buyer text, color text,
+  plies int, spreader int,
+  spread_start text, spread_dur int, cut_dur int,
+  created_at timestamptz default now()
+);
+create index if not exists lays_date_idx on public.lays(plan_date);
+
+create table if not exists public.plans (
+  id uuid primary key default gen_random_uuid(),
+  name text, plan_date date,
+  settings jsonb, input_lays jsonb,
+  result jsonb, idle_windows jsonb, summary jsonb,
+  created_at timestamptz default now()
+);
+create index if not exists plans_created_idx on public.plans(created_at desc);
+
+create table if not exists public.activity (
+  id uuid primary key default gen_random_uuid(),
+  ts timestamptz default now(),
+  user_name text default 'System',
+  action text, detail text
+);
+create index if not exists activity_ts_idx on public.activity(ts desc);
+
+-- Demo policies: allow anon full access (single-user / shareable demo).
+-- Tighten with auth if you need multi-user isolation.
+alter table public.app_settings enable row level security;
+alter table public.styles enable row level security;
+alter table public.lays enable row level security;
+alter table public.plans enable row level security;
+alter table public.activity enable row level security;
+
+grant select,insert,update,delete on public.app_settings,public.styles,public.lays,public.plans,public.activity to anon, authenticated;
+
+grant select,insert,update,delete on public.app_settings,public.styles,public.lays,public.plans,public.activity to anon, authenticated;
+
+drop policy if exists "anon_all" on public.app_settings;
+create policy "anon_all" on public.app_settings for all to anon using (true) with check (true);
+drop policy if exists "anon_all" on public.styles;
+create policy "anon_all" on public.styles for all to anon using (true) with check (true);
+drop policy if exists "anon_all" on public.lays;
+create policy "anon_all" on public.lays for all to anon using (true) with check (true);
+drop policy if exists "anon_all" on public.plans;
+create policy "anon_all" on public.plans for all to anon using (true) with check (true);
+drop policy if exists "anon_all" on public.activity;
+create policy "anon_all" on public.activity for all to anon using (true) with check (true);`;
+
+// ─── UTILS ───────────────────────────────────
+const toMin  = t => { const p=t.split(':'); return +p[0]*60+ +p[1]; };
+const toTime = m => { m=Math.round(m); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); };
+const durStr = m => m<=0?'—':m<60?Math.round(m)+' min':(m/60).toFixed(1)+' hr';
+const fmtDT  = d => new Date(d).toLocaleString();
+const today  = () => new Date().toISOString().split('T')[0];
+
+function toast(msg, type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=type==='error'?'#B71C1C':type==='info'?'#1A5FA8':type==='warn'?'#854F0B':'#2E7D32';
+  t.style.display='block'; clearTimeout(t._t);
+  t._t=setTimeout(()=>t.style.display='none',3200);
+}
+
+// ─── CONFIG (localStorage) ───────────────────
+function loadConfig(){ try{return JSON.parse(localStorage.getItem('sb_cfg')||'null');}catch{return null;} }
+function saveConfig(c){ localStorage.setItem('sb_cfg', JSON.stringify(c)); }
+function clearConfig(){ localStorage.removeItem('sb_cfg'); sb=null; }
+function initSupabase(){
+  const c=loadConfig(); if(!c) return false;
+  try{ sb=window.supabase.createClient(c.url, c.key); return true; }catch{ return false; }
+}
+function copySchema(){ navigator.clipboard.writeText(SCHEMA_SQL); toast('Schema copied to clipboard'); }
+
+// ─── ACTIVITY HELPER ─────────────────────────
+async function logActivity(action, detail){
+  if(!sb) return;
+  try{ await sb.from('activity').insert({action, detail, user_name:'User'}); }catch{}
+}
+
+// ─── SCHEDULER (in-browser) ──────────────────
+function generateSchedule(laysIn, settings){
+  const breaks=(settings.breaks||[]).map(b=>({from:toMin(b.from),to:toMin(b.to),name:b.name}));
+  const shS=toMin(settings.shiftStart), shE=toMin(settings.shiftEnd);
+  const nC=settings.numCutters;
+
+  // Push past breaks: if `start` falls inside a break, advance to break end
+  function skipBreaks(start){
+    let changed=true;
+    while(changed){ changed=false;
+      for(const b of breaks){ if(start>=b.from && start<b.to){ start=b.to; changed=true; } }
+    }
+    return start;
+  }
+  // Total break minutes that overlap [a,b)
+  function brkOverlap(a,b){
+    let o=0; for(const k of breaks){ o+=Math.max(0,Math.min(b,k.to)-Math.max(a,k.from)); } return o;
+  }
+  // Run an activity of pure `dur` minutes starting at `start`, skipping breaks
+  function runUntil(start,dur){
+    start=skipBreaks(start);
+    let end=start+dur;
+    // extend end past any breaks within [start,end]
+    let changed=true;
+    while(changed){ changed=false;
+      for(const b of breaks){
+        if(b.from>=start && b.from<end){ end += (b.to-b.from); changed=true; }
+      }
+    }
+    return {start,end};
+  }
+
+  const sorted=[...laysIn].sort((a,b)=>a.priority-b.priority);
+  const spreaderReady={}; // spreader# -> minute
+  const cutterReady=Array(nC).fill(shS);
+  const result=[];
+  const idleWindows=Array.from({length:nC},()=>[]);
+  const cutTimePerCutter=Array(nC).fill(0);
+  const idlePerCutter=Array(nC).fill(0);
+
+  for(const l of sorted){
+    const spr=l.spreader;
+    const spReadyTime=spreaderReady[spr]??shS;
+    const requestedStart=Math.max(toMin(l.spreadStart||settings.shiftStart), spReadyTime, shS);
+    const sp=runUntil(requestedStart, l.spreadDur);
+    spreaderReady[spr]=sp.end;
+
+    // Assign to cutter that's free earliest
+    let cIdx=0; for(let i=1;i<nC;i++){ if(cutterReady[i]<cutterReady[cIdx]) cIdx=i; }
+    const cutEarliest=Math.max(cutterReady[cIdx], sp.end);
+    const ct=runUntil(cutEarliest, l.cutDur);
+    const idleDur=Math.max(0, cutEarliest - cutterReady[cIdx]);
+    const tableGap=Math.max(0, cutEarliest - sp.end);
+
+    if(idleDur>2){
+      idleWindows[cIdx].push({from:cutterReady[cIdx],to:cutEarliest,dur:idleDur,layNo:l.layNo});
+      idlePerCutter[cIdx]+=idleDur;
+    }
+    cutterReady[cIdx]=ct.end;
+    cutTimePerCutter[cIdx]+=l.cutDur;
+
+    const status= ct.end>shE ? 'OVERTIME' : (tableGap>5 ? 'GAP' : 'OK');
+
+    result.push({
+      ...l,
+      spreadStartMin:sp.start, spreadEndMin:sp.end,
+      spreadStartTime:toTime(sp.start), spreadEndTime:toTime(sp.end),
+      cutterNum:cIdx+1,
+      cutStart:ct.start, cutEnd:ct.end,
+      cutStartTime:toTime(ct.start), cutEndTime:toTime(ct.end),
+      idleDur:Math.round(idleDur), tableGap:Math.round(tableGap),
+      status
+    });
+  }
+
+  const totalCuttingTime=cutTimePerCutter.reduce((a,b)=>a+b,0);
+  const totalIdleTime=idlePerCutter.reduce((a,b)=>a+b,0);
+  const totalBrk=breaks.reduce((a,b)=>a+(b.to-b.from),0);
+  const avail=Math.max(1,((shE-shS)-totalBrk)*nC);
+  const utilization=Math.round(totalCuttingTime/avail*100);
+  const issues=result.filter(r=>r.status!=='OK').length;
+
+  return {
+    result, idleWindows,
+    summary:{
+      shiftStart:settings.shiftStart, shiftEnd:settings.shiftEnd, numCutters:nC,
+      totalLays:result.length, totalPlies:result.reduce((a,r)=>a+(+r.plies||0),0),
+      totalCuttingTime, totalIdleTime, utilization, issues,
+      cutTimePerCutter, idlePerCutter
+    }
+  };
+}
+
+// ─── DB MAPPERS ──────────────────────────────
+const layToDb = (l,d) => ({
+  plan_date:l.planDate||d, priority:l.priority, session:l.session, lay_no:l.layNo,
+  style:l.style, buyer:l.buyer, color:l.color, plies:l.plies, spreader:l.spreader,
+  spread_start:l.spreadStart, spread_dur:l.spreadDur, cut_dur:l.cutDur
+});
+const layFromDb = r => ({
+  id:r.id, planDate:r.plan_date, priority:r.priority, session:r.session, layNo:r.lay_no,
+  style:r.style, buyer:r.buyer, color:r.color, plies:r.plies, spreader:r.spreader,
+  spreadStart:r.spread_start, spreadDur:r.spread_dur, cutDur:r.cut_dur
+});
+
+// ─── API ROUTER (Supabase-backed) ────────────
+async function api(method, path, body){
+  // Config routes don't need sb
+  if(path==='/api/config/status'){ return {configured: !!loadConfig()}; }
+  if(path==='/api/config/setup'){
+    saveConfig({url:body.supabaseUrl, key:body.supabaseKey});
+    if(!initSupabase()) throw new Error('Failed to init Supabase client');
+    // Quick connectivity probe
+    const {error}=await sb.from('app_settings').select('id').limit(1);
+    if(error) throw new Error('Connected, but schema missing — did you run the SQL? ('+error.message+')');
+    return {message:'Connected to Supabase!'};
+  }
+  if(path==='/api/config' && method==='DELETE'){ clearConfig(); return {ok:true}; }
+  if(path==='/api/health'){
+    if(!sb && !initSupabase()) return {status:'no_db'};
+    const {error}=await sb.from('app_settings').select('id').limit(1);
+    return {status: error?'error':'ok'};
+  }
+
+  if(!sb && !initSupabase()) throw new Error('Not connected to Supabase');
+
+  // Settings
+  if(path==='/api/settings' && method==='GET'){
+    const {data,error}=await sb.from('app_settings').select('*').eq('id',1).maybeSingle();
+    if(error) throw new Error(error.message);
+    return data ? {shiftStart:data.shift_start, shiftEnd:data.shift_end, numCutters:data.num_cutters, breaks:data.breaks||[]}
+                : {shiftStart:'07:00', shiftEnd:'18:00', numCutters:2, breaks:[]};
+  }
+  if(path==='/api/settings' && method==='PUT'){
+    const {error}=await sb.from('app_settings').upsert({id:1, shift_start:body.shiftStart, shift_end:body.shiftEnd, num_cutters:body.numCutters, breaks:body.breaks||[]});
+    if(error) throw new Error(error.message);
+    return {ok:true};
+  }
+
+  // Styles
+  if(path==='/api/styles' && method==='GET'){
+    const {data,error}=await sb.from('styles').select('*').order('code');
+    if(error) throw new Error(error.message);
+    return (data||[]).map(s=>({id:s.id,code:s.code,buyer:s.buyer,description:s.description,defaultCutDur:s.default_cut_dur}));
+  }
+  if(path==='/api/styles' && method==='POST'){
+    const {error}=await sb.from('styles').insert({code:body.code, buyer:body.buyer, description:body.description, default_cut_dur:body.defaultCutDur});
+    if(error) throw new Error(error.message);
+    logActivity('style_add','Added style '+body.code);
+    return {ok:true};
+  }
+  if(path.startsWith('/api/styles/') && method==='DELETE'){
+    const id=path.split('/').pop();
+    const {error}=await sb.from('styles').delete().eq('id',id);
+    if(error) throw new Error(error.message);
+    logActivity('style_delete','Deleted style');
+    return {ok:true};
+  }
+
+  // Lays
+  if(path.startsWith('/api/lays') && method==='GET'){
+    const d=new URLSearchParams(path.split('?')[1]||'').get('date');
+    const {data,error}=await sb.from('lays').select('*').eq('plan_date',d).order('priority');
+    if(error) throw new Error(error.message);
+    return (data||[]).map(layFromDb);
+  }
+  if(path.startsWith('/api/lays') && method==='DELETE'){
+    const d=new URLSearchParams(path.split('?')[1]||'').get('date');
+    const {error}=await sb.from('lays').delete().eq('plan_date',d);
+    if(error) throw new Error(error.message);
+    return {ok:true};
+  }
+  if(path==='/api/lays/bulk' && method==='POST'){
+    const d=today();
+    const rows=body.lays.map(l=>layToDb(l, l.planDate||d));
+    const {error}=await sb.from('lays').insert(rows);
+    if(error) throw new Error(error.message);
+    return {ok:true, count:rows.length};
+  }
+
+  // Generate plan (client-side scheduler + save)
+  if(path==='/api/schedule/generate' && method==='POST'){
+    const settings=await api('GET','/api/settings');
+    const sch=generateSchedule(body.lays, settings);
+    // Replace lays for date
+    await sb.from('lays').delete().eq('plan_date',body.planDate);
+    await sb.from('lays').insert(body.lays.map(l=>layToDb(l,body.planDate)));
+    // Save plan
+    const planRow={
+      name:body.planName, plan_date:body.planDate,
+      settings, input_lays:body.lays,
+      result:sch.result, idle_windows:sch.idleWindows, summary:sch.summary
+    };
+    const {data,error}=await sb.from('plans').insert(planRow).select().single();
+    if(error) throw new Error(error.message);
+    logActivity('plan_generate', `Generated ${body.planName}`);
+    return {plan:{
+      id:data.id, name:data.name, planDate:data.plan_date, createdAt:data.created_at,
+      settings, inputLays:body.lays, result:sch.result, idleWindows:sch.idleWindows,
+      summary:sch.summary, savedToSupabase:true
+    }};
+  }
+
+  // Plans
+  if(path.startsWith('/api/plans') && method==='GET' && !path.match(/\/api\/plans\/[\w-]+$/)){
+    const limit=+(new URLSearchParams(path.split('?')[1]||'').get('limit')||50);
+    const {data,error}=await sb.from('plans').select('id,name,plan_date,created_at,summary').order('created_at',{ascending:false}).limit(limit);
+    if(error) throw new Error(error.message);
+    return (data||[]).map(p=>({id:p.id,name:p.name,planDate:p.plan_date,createdAt:p.created_at,summary:p.summary}));
+  }
+  if(path.match(/\/api\/plans\/[\w-]+$/) && method==='GET'){
+    const id=path.split('/').pop();
+    const {data,error}=await sb.from('plans').select('*').eq('id',id).single();
+    if(error) throw new Error(error.message);
+    return {id:data.id,name:data.name,planDate:data.plan_date,createdAt:data.created_at,
+      settings:data.settings,inputLays:data.input_lays,result:data.result,idleWindows:data.idle_windows,summary:data.summary};
+  }
+  if(path.match(/\/api\/plans\/[\w-]+$/) && method==='DELETE'){
+    const id=path.split('/').pop();
+    const {error}=await sb.from('plans').delete().eq('id',id);
+    if(error) throw new Error(error.message);
+    logActivity('plan_delete','Deleted plan');
+    return {ok:true};
+  }
+
+  // Activity
+  if(path.startsWith('/api/activity') && method==='GET'){
+    const limit=+(new URLSearchParams(path.split('?')[1]||'').get('limit')||100);
+    const {data,error}=await sb.from('activity').select('*').order('ts',{ascending:false}).limit(limit);
+    if(error) throw new Error(error.message);
+    return (data||[]).map(l=>({action:l.action,detail:l.detail,userName:l.user_name,timestamp:l.ts}));
+  }
+
+  // Analytics
+  if(path.startsWith('/api/analytics/summary')){
+    const days=+(new URLSearchParams(path.split('?')[1]||'').get('days')||30);
+    const since=new Date(Date.now()-days*86400000).toISOString();
+    const {data:all}=await sb.from('plans').select('id,plan_date,created_at,summary');
+    const {data:recent}=await sb.from('plans').select('id,plan_date,created_at,summary').gte('created_at',since).order('created_at',{ascending:false});
+    const rec=recent||[];
+    const avg=rec.length?Math.round(rec.reduce((a,p)=>a+(p.summary?.utilization||0),0)/rec.length):0;
+    return {
+      totalPlans:(all||[]).length, recentPlans:rec.length,
+      avgUtilization:avg,
+      totalLays:rec.reduce((a,p)=>a+(p.summary?.totalLays||0),0),
+      totalPlies:rec.reduce((a,p)=>a+(p.summary?.totalPlies||0),0),
+      plansOverTime:rec.slice(0,20).map(p=>({date:p.plan_date,lays:p.summary?.totalLays||0,plies:p.summary?.totalPlies||0,utilization:p.summary?.utilization||0}))
+    };
+  }
+
+  throw new Error('Unknown route: '+method+' '+path);
+}
+
+// Populate schema text on load
+document.addEventListener('DOMContentLoaded',()=>{
+  const el=document.getElementById('schemaSql'); if(el) el.textContent=SCHEMA_SQL;
+});
+
+function switchPanel(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+name)?.classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+  if(name==='plans')    loadPlans();
+  if(name==='styles')   loadStyles();
+  if(name==='activity') loadActivity();
+  if(name==='analytics')loadAnalytics();
+}
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if(id==='settingsModal') renderSettingsModal();
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+// ─── SPLASH ──────────────────────────────────
+async function startApp(){
+  // Check if Supabase is configured
+  const cfg = await api('GET','/api/config/status');
+  if(!cfg.configured){
+    // Show setup wizard
+    document.getElementById('splash').classList.add('out');
+    document.getElementById('setupScreen').classList.add('show');
+  } else {
+    // Go straight to app
+    enterApp();
+  }
+}
+
+function enterApp(){
+  document.getElementById('splash').classList.add('out');
+  document.getElementById('setupScreen').classList.remove('show');
+  document.getElementById('app').style.display='block';
+  document.getElementById('planDate').value=today();
+  initData();
+}
+
+function goHome(){
+  document.getElementById('splash').classList.remove('out');
+  document.getElementById('app').style.display='none';
+}
+
+// ─── SETUP WIZARD ────────────────────────────
+async function connectSupabase(){
+  const url = document.getElementById('sbUrl').value.trim();
+  const key = document.getElementById('sbKey').value.trim();
+  const err = document.getElementById('setupErr');
+  const ok  = document.getElementById('setupOk');
+  const btn = document.getElementById('connectBtn');
+  const spin= document.getElementById('connectSpin');
+
+  err.style.display='none'; ok.style.display='none';
+  if(!url || !key){ err.textContent='Both URL and Service Role Key are required'; err.style.display='block'; return; }
+  if(!url.includes('supabase.co')){ err.textContent='URL should be like: https://yourproject.supabase.co'; err.style.display='block'; return; }
+
+  btn.disabled=true; spin.style.display='inline-block';
+  document.getElementById('sd1').classList.remove('active');
+  document.getElementById('sd2').classList.add('active');
+
+  try{
+    const res = await api('POST','/api/config/setup',{supabaseUrl:url, supabaseKey:key});
+    document.getElementById('sd2').classList.add('done');
+    document.getElementById('sd3').classList.add('active');
+    ok.textContent='✅ '+res.message;
+    ok.style.display='block';
+    spin.style.display='none';
+    setTimeout(()=>enterApp(), 1500);
+  }catch(e){
+    err.textContent='❌ '+e.message;
+    err.style.display='block';
+    btn.disabled=false; spin.style.display='none';
+    document.getElementById('sd2').classList.remove('active');
+    document.getElementById('sd1').classList.add('active');
+  }
+}
+
+// ─── DB STATUS ───────────────────────────────
+async function checkDB(){
+  try{
+    const h=await api('GET','/api/health');
+    const dot=document.getElementById('dbDot');
+    const txt=document.getElementById('dbText');
+    if(h.status==='ok'){
+      dot.className='dot dot-ok'; txt.textContent='Supabase ✅'; dbConnected=true;
+    } else if(h.status==='no_db'){
+      dot.className='dot dot-err'; txt.textContent='Not connected'; dbConnected=false;
+    } else {
+      dot.className='dot dot-err'; txt.textContent='DB error'; dbConnected=false;
+    }
+  }catch{
+    document.getElementById('dbDot').className='dot dot-err';
+    document.getElementById('dbText').textContent='Offline';
+  }
+}
+
+function renderSettingsModal(){
+  const cfg=loadConfig();
+  document.getElementById('settingsModalContent').innerHTML=`
+    <div class="alert al-${dbConnected?'success':'warn'}">
+      ${dbConnected?'✅ Connected to Supabase — all data syncing automatically':'⚠ Not connected to Supabase'}
+    </div>
+    <div style="font-size:13px;color:var(--gray5);line-height:2.2;margin-bottom:16px">
+      <div><strong>Status:</strong> ${dbConnected?'Connected ✅':'Disconnected'}</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-danger btn-sm" onclick="resetCredentials()">🔄 Reset & Re-configure Supabase</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('settingsModal')">Close</button>
+    </div>`;
+}
+
+async function resetCredentials(){
+  if(!confirm('This will disconnect Supabase. You will need to re-enter your credentials. Continue?')) return;
+  await api('DELETE','/api/config');
+  closeModal('settingsModal');
+  document.getElementById('app').style.display='none';
+  document.getElementById('splash').classList.remove('out');
+  toast('Credentials cleared — re-enter on next launch','info');
+}
+
+// ─── INIT ────────────────────────────────────
+async function initData(){
+  checkDB();
+  setInterval(checkDB, 30000); // check every 30s
+  await loadSettings().catch(()=>{});
+  await loadStyles().catch(()=>{});
+  toast('System ready — connected to Supabase ✅','info');
+}
+
+// ─── SETTINGS ────────────────────────────────
+async function loadSettings(){
+  const s=await api('GET','/api/settings');
+  document.getElementById('shiftStart').value=s.shiftStart||'07:00';
+  document.getElementById('shiftEnd').value=s.shiftEnd||'18:00';
+  document.getElementById('numCutters').value=s.numCutters||2;
+  breaksList=s.breaks||[]; renderBreaks();
+}
+
+async function saveSettings(){
+  try{
+    await api('PUT','/api/settings',{
+      shiftStart:document.getElementById('shiftStart').value,
+      shiftEnd:document.getElementById('shiftEnd').value,
+      numCutters:+document.getElementById('numCutters').value,
+      breaks:breaksList
+    });
+  }catch{}
+}
+
+// ─── BREAKS ──────────────────────────────────
+function renderBreaks(){
+  document.getElementById('breakRows').innerHTML=breaksList.map((b,i)=>`
+    <div class="brk-row">
+      <input type="text" value="${b.name}" onchange="breaksList[${i}].name=this.value" placeholder="Break name">
+      <input type="time" value="${b.from}" onchange="breaksList[${i}].from=this.value">
+      <input type="time" value="${b.to}"   onchange="breaksList[${i}].to=this.value">
+      <button class="btn btn-danger btn-sm" onclick="breaksList.splice(${i},1);renderBreaks()">✕</button>
+    </div>`).join('');
+}
+function addBreak(){ breaksList.push({id:'b'+Date.now(),name:'Break',from:'09:00',to:'09:15'}); renderBreaks(); }
+
+// ─── LAY TABLE ───────────────────────────────
+function addLayRow(d){
+  const id=++rowId;
+  const tr=document.createElement('tr'); tr.id='row-'+id;
+  const sessions=['Morning','Mid-Morning','Afternoon','Late Afternoon'];
+  const sessOpts=sessions.map(s=>`<option${s===(d.session||'Morning')?' selected':''}>${s}</option>`).join('');
+  const sprOpts=[1,2,3,4,5].map(n=>`<option${n===(d.spreader||1)?' selected':''}>${n}</option>`).join('');
+  tr.innerHTML=`
+    <td><input type="number" value="${d.priority||d.pri||lays.length+1}" min="1" style="width:48px" id="pri-${id}"></td>
+    <td><select id="sess-${id}" style="width:115px">${sessOpts}</select></td>
+    <td><input type="text" list="styleDatalist" value="${d.layNo||''}" placeholder="199-28" style="width:80px" id="layNo-${id}"></td>
+    <td><input type="text" list="styleDatalist" value="${d.style||''}" placeholder="DP2772" style="width:72px" id="style-${id}" onchange="autoFill(${id})"></td>
+    <td><input type="text" value="${d.buyer||''}" placeholder="UA" style="width:55px" id="buyer-${id}"></td>
+    <td><input type="text" value="${d.color||''}" placeholder="NAVY" style="width:78px" id="color-${id}"></td>
+    <td><input type="number" value="${d.plies||0}" min="0" style="width:52px" id="plies-${id}"></td>
+    <td><select id="spr-${id}" style="width:55px">${sprOpts}</select></td>
+    <td><input type="time" value="${d.spreadStart||'07:00'}" id="ss-${id}"></td>
+    <td><input type="number" value="${d.spreadDur||30}" min="1" style="width:55px" id="sd-${id}"></td>
+    <td><input type="number" value="${d.cutDur||d.defaultCutDur||30}" min="1" style="width:55px" id="cd-${id}"></td>
+    <td><button class="btn btn-danger btn-sm" onclick="removeLayRow(${id})">✕</button></td>`;
+  document.getElementById('layBody').appendChild(tr);
+  lays.push({id});
+}
+function autoFill(rowId){
+  const sm=stylesMaster.find(s=>s.code===document.getElementById('style-'+rowId).value);
+  if(sm){ document.getElementById('buyer-'+rowId).value=sm.buyer; document.getElementById('cd-'+rowId).value=sm.defaultCutDur; }
+}
+function removeLayRow(id){ document.getElementById('row-'+id)?.remove(); lays=lays.filter(l=>l.id!==id); }
+function clearLays(){
+  if(!lays.length)return;
+  if(!confirm('Clear all lays from the input table?'))return;
+  document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+}
+function readLays(){
+  return lays.map(l=>{
+    const id=l.id, ssm=toMin(document.getElementById('ss-'+id).value), sd=+document.getElementById('sd-'+id).value;
+    return{
+      priority:+document.getElementById('pri-'+id).value, session:document.getElementById('sess-'+id).value,
+      layNo:document.getElementById('layNo-'+id).value||'LAY-'+id,
+      style:document.getElementById('style-'+id).value||'—', buyer:document.getElementById('buyer-'+id).value||'—',
+      color:document.getElementById('color-'+id).value||'—', plies:+document.getElementById('plies-'+id).value,
+      spreader:+document.getElementById('spr-'+id).value, spreadStart:document.getElementById('ss-'+id).value,
+      spreadDur:sd, cutDur:+document.getElementById('cd-'+id).value,
+      planDate:document.getElementById('planDate').value
+    };
+  }).sort((a,b)=>a.priority-b.priority);
+}
+
+// ─── GENERATE ────────────────────────────────
+async function generatePlan(){
+  const laysArr=readLays();
+  if(!laysArr.length){ toast('Add at least one lay first!','error'); return; }
+  document.getElementById('topStatus').textContent='⟳ Generating...';
+  try{
+    // Save settings to Supabase first (auto-sync)
+    await api('PUT','/api/settings',{
+      shiftStart:document.getElementById('shiftStart').value,
+      shiftEnd:document.getElementById('shiftEnd').value,
+      numCutters:+document.getElementById('numCutters').value,
+      breaks:breaksList
+    });
+    const planDate=document.getElementById('planDate').value||today();
+    const planName=`Plan ${planDate} — ${laysArr.length} lays`;
+    // Generate + auto-save plan + auto-save lays → all goes to Supabase in one call
+    const resp=await api('POST','/api/schedule/generate',{lays:laysArr,planDate,planName});
+    currentPlan=resp.plan;
+    renderKpi(currentPlan.summary);
+    renderGantt(currentPlan);
+    renderSchedule(currentPlan);
+    renderDashboard(currentPlan);
+    renderIdleTracker(currentPlan);
+    document.getElementById('ganttSub').textContent=
+      `${currentPlan.name} · ${currentPlan.summary.totalLays} lays · ${currentPlan.summary.utilization}% util`+
+      (resp.plan.savedToSupabase?' · ✅ Saved to Supabase':'');
+    document.getElementById('topStatus').textContent=`${laysArr.length} lays · ${currentPlan.summary.utilization}% util`;
+    switchPanel('gantt');
+    toast('✅ Plan generated & saved to Supabase automatically!');
+  }catch(e){ toast('Error: '+e.message,'error'); document.getElementById('topStatus').textContent='Error'; }
+}
+
+async function saveLaysToDB(){
+  const laysArr=readLays();
+  if(!laysArr.length){ toast('No lays to save!','error'); return; }
+  try{
+    const planDate=document.getElementById('planDate').value||today();
+    await api('DELETE','/api/lays?date='+planDate);
+    await api('POST','/api/lays/bulk',{lays:laysArr});
+    toast(`✅ ${laysArr.length} lays saved to Supabase`);
+  }catch(e){ toast('Error: '+e.message,'error'); }
+}
+
+async function loadTodayLays(){
+  try{
+    const d=document.getElementById('planDate').value||today();
+    const data=await api('GET','/api/lays?date='+d);
+    if(!data.length){ toast('No lays found for '+d,'info'); return; }
+    document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+    data.forEach(l=>addLayRow(l));
+    toast(`Loaded ${data.length} lays from Supabase`);
+  }catch(e){ toast('Error: '+e.message,'error'); }
+}
+
+// ─── RENDER KPI ───────────────────────────────
+function renderKpi(s){
+  document.getElementById('ganttKpi').innerHTML=`
+    <div class="kpi-card kc-blue"><div class="kpi-val">${s.utilization}%</div><div class="kpi-lbl">Cutter utilization</div><div class="kpi-sub">${durStr(s.totalCuttingTime)} cutting</div></div>
+    <div class="kpi-card kc-purple"><div class="kpi-val">${durStr(s.totalIdleTime)}</div><div class="kpi-lbl">Total idle time</div><div class="kpi-sub">${(s.idlePerCutter||[]).length} cutters</div></div>
+    <div class="kpi-card kc-green"><div class="kpi-val">${s.totalLays}</div><div class="kpi-lbl">Lays scheduled</div><div class="kpi-sub">${(s.totalPlies||0).toLocaleString()} plies</div></div>
+    <div class="kpi-card kc-${s.issues?'red':'green'}"><div class="kpi-val">${s.issues}</div><div class="kpi-lbl">Issues</div><div class="kpi-sub">${s.issues?'Check schedule':'All OK ✅'}</div></div>`;
+}
+
+// ─── RENDER GANTT ─────────────────────────────
+function renderGantt(plan){
+  const s=plan.summary, breaks=plan.settings.breaks||[];
+  const shS=toMin(s.shiftStart),shE=toMin(s.shiftEnd),shL=shE-shS;
+  const pct=m=>((m-shS)/shL*100).toFixed(3)+'%', wid=m=>(m/shL*100).toFixed(3)+'%';
+  const ticks=[]; for(let m=shS;m<=shE;m+=60) ticks.push(m);
+  let h=`<div class="g-hdr"><div class="g-lbl">Machine / Table</div><div class="g-tr">`;
+  ticks.forEach(m=>{h+=`<span class="g-tick" style="left:${pct(m)}">${toTime(m)}</span>`;});
+  h+=`</div></div>`;
+  h+=`<div class="g-sec"><div class="g-sec-lbl">Spreader tables</div><div class="g-sec-ln"></div></div>`;
+  [...new Set(plan.result.map(l=>l.spreader))].sort((a,b)=>a-b).forEach(sp=>{
+    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">SPREADER-${sp}</div><div class="g-rlbl-s">Table ${sp}</div></div><div class="g-track">`;
+    breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name}"></div>`;});
+    plan.result.filter(l=>l.spreader===sp).forEach(l=>{h+=`<div class="g-bar g-sp" style="left:${pct(l.spreadStartMin)};width:${wid(l.spreadDur)}" title="${l.layNo}|${l.style}|${l.color}|${l.plies}pl|${l.spreadDur}min">${l.layNo}</div>`;});
+    h+=`</div></div>`;
+  });
+  h+=`<div class="g-div"><div class="g-div-sp"></div><div class="g-div-ln"></div></div>`;
+  h+=`<div class="g-sec"><div class="g-sec-lbl">Auto cutters</div><div class="g-sec-ln"></div></div>`;
+  for(let c=0;c<s.numCutters;c++){
+    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">CUTTER-${c+1}</div><div class="g-rlbl-s">Auto cutter</div></div><div class="g-track">`;
+    breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name}">${b.name.slice(0,5)}</div>`;});
+    (plan.idleWindows[c]||[]).forEach(w=>{h+=`<div class="g-bar g-id" style="left:${pct(w.from)};width:${wid(w.to-w.from)}" title="IDLE ${Math.round(w.dur)}min">IDLE ${Math.round(w.dur)}m</div>`;});
+    plan.result.filter(l=>l.cutterNum===c+1).sort((a,b)=>a.cutStart-b.cutStart).forEach(l=>{h+=`<div class="g-bar g-ct" style="left:${pct(l.cutStart)};width:${wid(l.cutDur)}" title="${l.layNo}|${l.cutDur}min|${l.status}">${l.layNo}</div>`;});
+    h+=`</div></div>`;
+  }
+  document.getElementById('ganttOuter').innerHTML=h;
+}
+
+// ─── RENDER SCHEDULE ──────────────────────────
+function renderSchedule(plan){
+  document.getElementById('schedBody').innerHTML=plan.result.map(l=>{
+    const badge=l.status==='OK'?'b-ok':l.status==='OVERTIME'?'b-ot':'b-gap';
+    const idB=l.idleDur>2?`<span class="badge b-idle">${l.idleDur}m</span>`:'—';
+    const gpB=l.tableGap>2?`<span class="badge b-gap">${l.tableGap}m</span>`:'—';
+    return`<tr>
+      <td><strong>${l.priority}</strong></td>
+      <td><code style="background:var(--gray1);padding:2px 6px;border-radius:4px">${l.layNo}</code></td>
+      <td>${l.style}</td><td>${l.buyer}</td><td>${l.color}</td><td>${(l.plies||0).toLocaleString()}</td>
+      <td><span class="badge b-blue">SP-${l.spreader}</span></td>
+      <td class="mono">${l.spreadStartTime}</td><td class="mono">${l.spreadEndTime}</td><td>${l.spreadDur}m</td>
+      <td><span class="badge b-orange">CUT-${l.cutterNum}</span></td>
+      <td class="mono">${l.cutStartTime}</td><td class="mono">${l.cutEndTime}</td><td>${l.cutDur}m</td>
+      <td>${idB}</td><td>${gpB}</td><td><span class="badge ${badge}">${l.status}</span></td>
+    </tr>`;
+  }).join('');
+  const s=plan.summary;
+  document.getElementById('schedFooter').innerHTML=
+    `<strong>${s.totalLays}</strong> lays · <strong>${(s.totalPlies||0).toLocaleString()}</strong> plies · Util: <strong>${s.utilization}%</strong> · Idle: <strong>${durStr(s.totalIdleTime)}</strong>`;
+}
+
+// ─── RENDER DASHBOARD ─────────────────────────
+function renderDashboard(plan){
+  const s=plan.summary, breaks=plan.settings.breaks||[];
+  const totBrk=breaks.reduce((a,b)=>a+(toMin(b.to)-toMin(b.from)),0);
+  const avail=(toMin(s.shiftEnd)-toMin(s.shiftStart))-totBrk||1;
+  let utilHtml='';
+  for(let c=0;c<s.numCutters;c++){
+    const cp=Math.min(Math.round((s.cutTimePerCutter[c]||0)/avail*100),100);
+    const ip=Math.min(Math.round((s.idlePerCutter[c]||0)/avail*100),100);
+    utilHtml+=`
+      <div class="prog-wrap"><div class="prog-lbl-row"><span class="prog-lbl">CUTTER-${c+1} — Cutting (${durStr(s.cutTimePerCutter[c]||0)})</span><span class="prog-pct" style="color:var(--blue)">${cp}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${cp}%;background:var(--blue)"></div></div></div>
+      <div class="prog-wrap"><div class="prog-lbl-row"><span class="prog-lbl">CUTTER-${c+1} — Idle (${durStr(s.idlePerCutter[c]||0)})</span><span class="prog-pct" style="color:var(--purple)">${ip}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${ip}%;background:var(--purple)"></div></div></div>
+      <div style="height:4px"></div>`;
+  }
+  const worst=(plan.idleWindows||[]).flat().sort((a,b)=>b.dur-a.dur)[0];
+  const ots=plan.result.filter(l=>l.status==='OVERTIME');
+  document.getElementById('dashContent').innerHTML=`
+    <div class="kpi-grid kpi4">
+      <div class="kpi-card kc-blue"><div class="kpi-val">${s.utilization}%</div><div class="kpi-lbl">Cutter utilization</div></div>
+      <div class="kpi-card kc-purple"><div class="kpi-val">${durStr(s.totalIdleTime)}</div><div class="kpi-lbl">Total idle time</div></div>
+      <div class="kpi-card kc-green"><div class="kpi-val">${(s.totalPlies||0).toLocaleString()}</div><div class="kpi-lbl">Total plies</div></div>
+      <div class="kpi-card kc-${ots.length?'red':'green'}"><div class="kpi-val">${ots.length}</div><div class="kpi-lbl">Overtime lays</div></div>
+    </div>
+    ${worst?`<div class="alert al-info">💡 <strong>Longest idle:</strong> ${Math.round(worst.dur)} min (${toTime(worst.from)} → ${toTime(worst.to)}) — lay <strong>${worst.layNo}</strong>. Move a lay with spread ≤ ${Math.round(worst.dur)} min earlier.</div>`:`<div class="alert al-success">✅ Both cutters fully utilized — zero idle time!</div>`}
+    ${ots.length?`<div class="alert al-warn">⚠ <strong>${ots.length} overtime:</strong> ${ots.map(l=>l.layNo+' ends '+l.cutEndTime).join(', ')}</div>`:''}
+    <div class="card"><div class="card-title" style="margin-bottom:12px">Utilization breakdown</div>${utilHtml}</div>
+    <div class="card"><div class="card-title" style="margin-bottom:12px">Planning priority rules</div>
+    <ul class="rules-list">
+      <li><span class="rule-n">1</span>Auto cutter should never wait idle — assign cuts immediately when cutter is free.</li>
+      <li><span class="rule-n">2</span>Spreading sequence should follow cutter ready time to minimise idle gaps.</li>
+      <li><span class="rule-n">3</span>Minimum gap target between spread end and cut start = zero.</li>
+      <li><span class="rule-n">4</span>Release spreader tables as soon as cutting starts — do not block tables.</li>
+      <li><span class="rule-n">5</span>Prioritise short-spread lays to fill cutter idle windows.</li>
+    </ul></div>`;
+}
+
+// ─── RENDER IDLE TRACKER ─────────────────────
+function renderIdleTracker(plan){
+  const s=plan.summary; let h='',anyIdle=false;
+  for(let c=0;c<s.numCutters;c++){
+    const total=s.idlePerCutter[c]||0, events=plan.idleWindows[c]||[];
+    h+=`<div class="card"><div class="card-title" style="margin-bottom:12px">CUTTER-${c+1} &nbsp;·&nbsp; Total idle: ${durStr(total)} &nbsp;·&nbsp; ${events.length} event${events.length!==1?'s':''}</div>`;
+    if(events.length){
+      anyIdle=true;
+      h+=events.map(w=>`<div class="idle-ev">
+        <div><div class="idle-time">${toTime(w.from)} → ${toTime(w.to)}</div>
+        <div class="idle-reason">Waiting for lay <strong>${w.layNo}</strong> to finish spreading</div>
+        <div class="idle-fix">→ Fix: move a lay with spread ≤ ${Math.round(w.dur)} min before <strong>${w.layNo}</strong></div></div>
+        <span class="idle-dur">${Math.round(w.dur)} min idle</span>
+      </div>`).join('');
+    } else {
+      h+=`<div style="color:var(--green);font-size:13px;font-weight:500;padding:6px 0">✅ Zero idle — perfectly utilized</div>`;
+    }
+    h+=`</div>`;
+  }
+  if(!anyIdle) h=`<div class="alert al-success">✅ Both cutters have zero idle time — 100% utilization!</div>`+h;
+  document.getElementById('idleContent').innerHTML=h;
+}
+
+// ─── PLANS ───────────────────────────────────
+async function loadPlans(){
+  document.getElementById('plansList').innerHTML='<div class="loading"><div class="spin"></div>Loading from Supabase...</div>';
+  try{
+    const plans=await api('GET','/api/plans?limit=50');
+    if(!plans.length){ document.getElementById('plansList').innerHTML='<p style="color:var(--gray4);font-size:13px;padding:8px">No plans yet. Generate a plan and it will appear here automatically.</p>'; return; }
+    document.getElementById('plansList').innerHTML=plans.map(p=>`
+      <div class="plan-row">
+        <div>
+          <div class="plan-name">${p.name}</div>
+          <div class="plan-meta">${fmtDT(p.createdAt)} · ${p.summary?.totalLays||0} lays · ${p.summary?.utilization||0}% util · ${(p.summary?.totalPlies||0).toLocaleString()} plies</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="badge ${(p.summary?.issues||0)?'b-gap':'b-ok'}">${p.summary?.issues||0} issues</span>
+          <button class="btn btn-outline btn-sm" onclick="loadPlan('${p.id}')">⬆ Load</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePlan('${p.id}')">✕</button>
+        </div>
+      </div>`).join('');
+  }catch(e){ document.getElementById('plansList').innerHTML=`<p style="color:var(--red);font-size:13px">Error: ${e.message}</p>`; }
+}
+
+async function loadPlan(id){
+  try{
+    const plan=await api('GET','/api/plans/'+id);
+    currentPlan=plan;
+    document.getElementById('shiftStart').value=plan.settings.shiftStart;
+    document.getElementById('shiftEnd').value=plan.settings.shiftEnd;
+    document.getElementById('numCutters').value=plan.settings.numCutters;
+    breaksList=plan.settings.breaks||[]; renderBreaks();
+    document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+    (plan.inputLays||[]).forEach(l=>addLayRow(l));
+    renderKpi(plan.summary); renderGantt(plan); renderSchedule(plan); renderDashboard(plan); renderIdleTracker(plan);
+    document.getElementById('ganttSub').textContent=plan.name+' (loaded from Supabase)';
+    document.getElementById('topStatus').textContent=plan.summary.totalLays+' lays · '+plan.summary.utilization+'% util';
+    switchPanel('gantt');
+    toast('Loaded: '+plan.name);
+  }catch(e){ toast('Error: '+e.message,'error'); }
+}
+
+async function deletePlan(id){
+  if(!confirm('Delete this plan from Supabase?')) return;
+  try{ await api('DELETE','/api/plans/'+id); toast('Plan deleted','info'); loadPlans(); }
+  catch(e){ toast('Error: '+e.message,'error'); }
+}
+
+// ─── STYLES ──────────────────────────────────
+async function loadStyles(){
+  try{
+    stylesMaster=await api('GET','/api/styles');
+    document.getElementById('styleDatalist').innerHTML=stylesMaster.map(s=>`<option value="${s.code}">${s.code} — ${s.buyer} — ${s.description}</option>`).join('');
+    const el=document.getElementById('stylesBody');
+    if(!el) return;
+    el.innerHTML=stylesMaster.map(s=>`<tr>
+      <td><code style="background:var(--gray1);padding:2px 8px;border-radius:4px">${s.code}</code></td>
+      <td><span class="badge b-teal">${s.buyer}</span></td>
+      <td>${s.description||'—'}</td><td>${s.defaultCutDur} min</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteStyle('${s.id}')">✕</button></td>
+    </tr>`).join('');
+  }catch(e){ console.error(e.message); }
+}
+
+async function addStyle(){
+  const code=document.getElementById('nsCode').value.trim();
+  if(!code){ toast('Style code required','error'); return; }
+  try{
+    await api('POST','/api/styles',{code,buyer:document.getElementById('nsBuyer').value,description:document.getElementById('nsDesc').value,defaultCutDur:+document.getElementById('nsCutDur').value});
+    closeModal('addStyleModal');
+    ['nsCode','nsBuyer','nsDesc'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('nsCutDur').value='40';
+    await loadStyles(); toast('Style saved to Supabase ✅');
+  }catch(e){ toast('Error: '+e.message,'error'); }
+}
+
+async function deleteStyle(id){
+  if(!confirm('Delete this style from Supabase?')) return;
+  try{ await api('DELETE','/api/styles/'+id); await loadStyles(); toast('Style deleted','info'); }
+  catch(e){ toast('Error: '+e.message,'error'); }
+}
+
+// ─── ACTIVITY ────────────────────────────────
+async function loadActivity(){
+  document.getElementById('activityList').innerHTML='<div class="loading"><div class="spin"></div>Loading...</div>';
+  try{
+    const logs=await api('GET','/api/activity?limit=100');
+    if(!logs.length){ document.getElementById('activityList').innerHTML='<p style="color:var(--gray4);font-size:13px">No activity yet.</p>'; return; }
+    document.getElementById('activityList').innerHTML=logs.map(l=>`
+      <div class="act-item">
+        <div class="act-dot" style="background:${l.action.includes('generate')?'var(--blue)':l.action.includes('delete')?'var(--red)':'var(--green)'}"></div>
+        <div style="flex:1">
+          <div style="font-size:13px"><strong>${l.userName||'System'}</strong> — ${l.detail}</div>
+          <div style="font-size:10px;color:var(--gray4);font-family:var(--mono)">${fmtDT(l.timestamp)}</div>
+        </div>
+      </div>`).join('');
+  }catch(e){ document.getElementById('activityList').innerHTML=`<p style="color:var(--red);font-size:13px">Error: ${e.message}</p>`; }
+}
+
+// ─── ANALYTICS ───────────────────────────────
+async function loadAnalytics(){
+  try{
+    const data=await api('GET','/api/analytics/summary?days=30');
+    document.getElementById('analyticsKpi').innerHTML=`
+      <div class="kpi-card kc-blue"><div class="kpi-val">${data.totalPlans}</div><div class="kpi-lbl">Total plans</div><div class="kpi-sub">${data.recentPlans} in last 30 days</div></div>
+      <div class="kpi-card kc-green"><div class="kpi-val">${data.avgUtilization}%</div><div class="kpi-lbl">Avg utilization (30d)</div><div class="kpi-sub">${data.totalLays} total lays</div></div>
+      <div class="kpi-card kc-purple"><div class="kpi-val">${(data.totalPlies||0).toLocaleString()}</div><div class="kpi-lbl">Total plies (30d)</div></div>`;
+    document.getElementById('analyticsTable').innerHTML=data.plansOverTime?.length
+      ?`<div class="card-title" style="margin-bottom:12px">Plan history</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Date</th><th>Lays</th><th>Plies</th><th>Utilization</th></tr></thead>
+          <tbody>${data.plansOverTime.map(p=>`<tr><td>${p.date}</td><td>${p.lays}</td><td>${(p.plies||0).toLocaleString()}</td>
+            <td><div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:7px;background:var(--gray2);border-radius:4px;overflow:hidden">
+                <div style="width:${p.utilization}%;height:100%;background:var(--blue);border-radius:4px"></div>
+              </div><strong style="color:var(--blue);min-width:36px;font-size:12px">${p.utilization}%</strong>
+            </div></td></tr>`).join('')}</tbody>
+        </table></div>`
+      :'<p style="color:var(--gray4);font-size:13px">No history yet. Generate plans to see analytics.</p>';
+  }catch(e){ document.getElementById('analyticsKpi').innerHTML=`<p style="color:var(--red)">Error: ${e.message}</p>`; }
+}
+
+// ─── CSV EXPORT ───────────────────────────────
+function exportCSV(){
+  if(!currentPlan){ toast('Generate a plan first!','error'); return; }
+  let csv='Priority,Session,Lay No,Style,Buyer,Color,Plies,Spreader,Spread Start,Spread End,Spread Dur,Cutter,Cut Start,Cut End,Cut Dur,Cutter Idle (min),Table Wait (min),Status\n';
+  currentPlan.result.forEach(l=>{csv+=`${l.priority},"${l.session}","${l.layNo}","${l.style}","${l.buyer}","${l.color}",${l.plies||0},${l.spreader},${l.spreadStartTime},${l.spreadEndTime},${l.spreadDur},${l.cutterNum},${l.cutStartTime},${l.cutEndTime},${l.cutDur},${l.idleDur},${l.tableGap},${l.status}\n`;});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='Cutting_Gantt_'+currentPlan.planDate+'.csv'; a.click();
+  toast('CSV exported');
+}
+
+// ─── SAMPLE DATA ─────────────────────────────
+function loadSampleData(){
+  document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+  [{priority:1,session:'Morning',layNo:'199-28',style:'DP2772',buyer:'UA',color:'NAVY',plies:130,spreader:1,spreadStart:'07:00',spreadDur:46,cutDur:45},
+   {priority:2,session:'Morning',layNo:'199-32',style:'DP2772',buyer:'UA',color:'BLACK',plies:86,spreader:2,spreadStart:'07:00',spreadDur:34,cutDur:45},
+   {priority:3,session:'Morning',layNo:'191-6',style:'CP2772',buyer:'UA',color:'NAVY',plies:19,spreader:3,spreadStart:'07:00',spreadDur:22,cutDur:30},
+   {priority:4,session:'Morning',layNo:'191-A',style:'CP2772',buyer:'UA',color:'GREY',plies:100,spreader:4,spreadStart:'07:00',spreadDur:55,cutDur:30},
+   {priority:5,session:'Morning',layNo:'222-R',style:'41E5220',buyer:'UA',color:'WHITE WASH',plies:95,spreader:5,spreadStart:'07:00',spreadDur:48,cutDur:38},
+   {priority:6,session:'Morning',layNo:'203-A',style:'DP2772',buyer:'TARGET',color:'NAVY',plies:110,spreader:1,spreadStart:'08:05',spreadDur:50,cutDur:45},
+   {priority:7,session:'Afternoon',layNo:'199-44',style:'DP2772',buyer:'TARGET',color:'BLACK',plies:72,spreader:4,spreadStart:'13:30',spreadDur:44,cutDur:45},
+   {priority:8,session:'Afternoon',layNo:'222-6',style:'41E5220',buyer:'UA',color:'WHITE WASH',plies:95,spreader:5,spreadStart:'13:30',spreadDur:50,cutDur:38},
+   {priority:9,session:'Late Afternoon',layNo:'203-E',style:'DP2772',buyer:'TARGET',color:'NAVY',plies:110,spreader:4,spreadStart:'15:45',spreadDur:52,cutDur:45},
+   {priority:10,session:'Late Afternoon',layNo:'191-22',style:'CP2772',buyer:'UA',color:'NAVY',plies:50,spreader:5,spreadStart:'15:45',spreadDur:28,cutDur:30}
+  ].forEach(d=>addLayRow(d));
+  toast('Sample data loaded — click Generate & Save to Supabase');
+}
+</script>
+</body>
+</html>
