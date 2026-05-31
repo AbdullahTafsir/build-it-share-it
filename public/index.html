@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cutting Dept — Gantt Planning System</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --blue:#1A5FA8;--blue-lt:#E8F1FB;--blue-dk:#0C3F73;
@@ -291,11 +292,17 @@ tbody tr:hover td{background:var(--gray1)}
     </div>
 
     <div class="setup-step">
-      <strong>Step 1:</strong> Go to <strong>supabase.com</strong> → open your project<br>
-      <strong>Step 2:</strong> Run the SQL schema from <code>supabase_schema.sql</code> in the SQL Editor<br>
-      <strong>Step 3:</strong> Go to <strong>Settings → API</strong> → copy Project URL and service_role key<br>
+      <strong>Step 1:</strong> Go to <strong>supabase.com</strong> → open (or create) your project<br>
+      <strong>Step 2:</strong> Open the <strong>SQL Editor</strong> and run the schema below (click "Show SQL schema")<br>
+      <strong>Step 3:</strong> Go to <strong>Settings → API</strong> → copy <em>Project URL</em> and <em>anon public</em> key<br>
       <strong>Step 4:</strong> Paste them below and click Connect
     </div>
+
+    <details style="margin:10px 0 14px;font-size:12px">
+      <summary style="cursor:pointer;color:var(--blue);font-weight:600">📋 Show SQL schema (copy → paste in Supabase SQL Editor)</summary>
+      <pre id="schemaSql" style="background:#0C3F73;color:#E8F1FB;padding:12px;border-radius:8px;overflow:auto;font-family:var(--mono);font-size:11px;line-height:1.5;margin-top:8px;max-height:260px"></pre>
+      <button class="btn btn-outline btn-sm" style="margin-top:6px" onclick="copySchema()">📋 Copy schema</button>
+    </details>
 
     <div class="setup-err" id="setupErr"></div>
     <div class="setup-ok"  id="setupOk"></div>
@@ -303,12 +310,12 @@ tbody tr:hover td{background:var(--gray1)}
     <div class="setup-field">
       <label>Supabase Project URL</label>
       <input type="text" id="sbUrl" placeholder="https://your-project-id.supabase.co">
-      <div class="hint">Found in: Supabase Dashboard → Settings → API → Project URL</div>
+      <div class="hint">Settings → API → Project URL</div>
     </div>
     <div class="setup-field">
-      <label>Service Role Key (secret)</label>
+      <label>Anon public key</label>
       <input type="password" id="sbKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
-      <div class="hint">Found in: Supabase Dashboard → Settings → API → service_role key → Reveal</div>
+      <div class="hint">Settings → API → Project API keys → <strong>anon public</strong> (safe to share)</div>
     </div>
 
     <div class="btn-row" style="margin-top:6px">
@@ -320,9 +327,9 @@ tbody tr:hover td{background:var(--gray1)}
 
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray2);
       font-size:12px;color:var(--gray4);line-height:1.8">
-      🔒 Your credentials are stored only on your local server in <code>data/config.json</code><br>
-      🔄 After connecting, all plans, lays, styles and settings sync automatically<br>
-      📋 Need the SQL schema? Download <code>supabase_schema.sql</code> from your project folder
+      🔒 Credentials are saved in your browser's localStorage only — never sent anywhere except Supabase.<br>
+      🔄 All plans, lays, styles and settings sync to your Supabase project automatically.<br>
+      🌐 This is a single static HTML file — host it on GitHub Pages, Netlify, or open locally.
     </div>
   </div>
 </div>
