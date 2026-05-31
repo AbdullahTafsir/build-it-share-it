@@ -187,27 +187,38 @@ tbody tr:hover td{background:var(--gray1)}
 
 /* Gantt */
 .gantt-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--gray2);background:#fff}
-.gantt-inner{min-width:1000px;padding:14px}
-.g-hdr{display:flex;align-items:flex-end;margin-bottom:5px}
-.g-lbl{width:155px;flex-shrink:0;font-size:9px;font-weight:700;color:var(--gray4);text-transform:uppercase}
-.g-tr{flex:1;position:relative;height:18px}
-.g-tick{position:absolute;font-size:9px;color:var(--gray4);transform:translateX(-50%);white-space:nowrap;font-family:var(--mono);font-weight:500}
-.g-row{display:flex;align-items:center;margin-bottom:4px}
-.g-rlbl{width:155px;flex-shrink:0}
-.g-rlbl-m{font-size:11px;font-weight:600;color:var(--gray6)}
-.g-rlbl-s{font-size:9px;color:var(--gray4)}
-.g-track{flex:1;position:relative;height:22px;background:var(--gray1);border-radius:3px;overflow:hidden}
-.g-bar{position:absolute;height:22px;display:flex;align-items:center;padding:0 5px;font-size:9px;font-weight:700;overflow:hidden;white-space:nowrap;border-radius:2px}
-.g-sp{background:var(--blue);color:#fff}.g-ct{background:var(--orange);color:#fff}
-.g-id{background:var(--purple);color:#fff;opacity:.9}.g-brk{background:var(--green);color:#fff;opacity:.85}
-.g-div{height:1px;background:var(--gray2);margin:6px 0;display:flex}
-.g-div-sp{width:155px;flex-shrink:0}.g-div-ln{flex:1}
-.g-sec{display:flex;align-items:center;margin-bottom:4px}
-.g-sec-lbl{width:155px;flex-shrink:0;font-size:9px;font-weight:700;color:var(--gray4);text-transform:uppercase}
-.g-sec-ln{flex:1;height:1px;background:var(--gray2)}
-.legend{display:flex;gap:14px;flex-wrap:wrap;padding-top:10px}
-.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gray5)}
-.leg-sw{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+.gantt-inner{min-width:1280px;padding:18px 20px}
+.g-hdr{display:flex;align-items:flex-end;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--gray2)}
+.g-lbl{width:170px;flex-shrink:0;font-size:10px;font-weight:700;color:var(--gray5);text-transform:uppercase;letter-spacing:.5px}
+.g-tr{flex:1;position:relative;height:30px}
+.g-tick{position:absolute;font-size:10px;color:var(--gray5);transform:translateX(-50%);white-space:nowrap;font-family:var(--mono);font-weight:600;bottom:6px}
+.g-tick.minor{font-size:9px;color:var(--gray4);font-weight:500;opacity:.8}
+.g-tick-mark{position:absolute;bottom:0;width:1px;height:5px;background:var(--gray3);transform:translateX(-50%)}
+.g-tick-mark.major{height:9px;background:var(--gray5);width:1.5px}
+.g-row{display:flex;align-items:center;margin-bottom:6px}
+.g-rlbl{width:170px;flex-shrink:0;padding-right:10px}
+.g-rlbl-m{font-size:12px;font-weight:700;color:var(--gray6);letter-spacing:.3px}
+.g-rlbl-s{font-size:10px;color:var(--gray4);margin-top:1px}
+.g-track{flex:1;position:relative;height:26px;background:var(--gray1);border-radius:4px;overflow:hidden}
+.g-grid{position:absolute;inset:0;pointer-events:none}
+.g-grid-ln{position:absolute;top:0;bottom:0;width:1px;background:var(--gray2)}
+.g-grid-ln.major{background:var(--gray3)}
+.g-bar{position:absolute;top:2px;height:22px;display:flex;align-items:center;justify-content:center;padding:0 6px;
+  font-size:10px;font-weight:700;overflow:hidden;white-space:nowrap;border-radius:3px;
+  box-shadow:0 1px 2px rgba(0,0,0,.1);text-overflow:ellipsis;cursor:default;transition:transform .12s,box-shadow .12s}
+.g-bar:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.18);z-index:5}
+.g-sp{background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff}
+.g-ct{background:linear-gradient(180deg,#f97316,#ea580c);color:#fff}
+.g-id{background:repeating-linear-gradient(45deg,#a855f7,#a855f7 6px,#9333ea 6px,#9333ea 12px);color:#fff;opacity:.92}
+.g-brk{background:repeating-linear-gradient(45deg,#10b981,#10b981 5px,#059669 5px,#059669 10px);color:#fff;opacity:.88}
+.g-div{height:1px;background:var(--gray2);margin:12px 0;display:flex}
+.g-div-sp{width:170px;flex-shrink:0}.g-div-ln{flex:1}
+.g-sec{display:flex;align-items:center;margin-bottom:8px;margin-top:4px}
+.g-sec-lbl{width:170px;flex-shrink:0;font-size:10px;font-weight:800;color:var(--gray6);text-transform:uppercase;letter-spacing:.8px}
+.g-sec-ln{flex:1;height:1px;background:linear-gradient(to right,var(--gray3),transparent)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:14px 4px 4px;border-top:1px solid var(--gray2);margin-top:14px}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gray5);font-weight:500}
+.leg-sw{width:14px;height:14px;border-radius:3px;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,.1)}
 
 .prog-wrap{margin-bottom:9px}
 .prog-lbl-row{display:flex;justify-content:space-between;margin-bottom:4px}
@@ -1217,26 +1228,45 @@ function renderGantt(plan){
   const s=plan.summary, breaks=plan.settings.breaks||[];
   const shS=toMin(s.shiftStart),shE=toMin(s.shiftEnd),shL=shE-shS;
   const pct=m=>((m-shS)/shL*100).toFixed(3)+'%', wid=m=>(m/shL*100).toFixed(3)+'%';
-  const ticks=[]; for(let m=shS;m<=shE;m+=60) ticks.push(m);
+  // 30-min ticks
+  const ticks=[]; for(let m=shS;m<=shE;m+=30) ticks.push(m);
+  // header with major (hour) + minor (30m) marks
   let h=`<div class="g-hdr"><div class="g-lbl">Machine / Table</div><div class="g-tr">`;
-  ticks.forEach(m=>{h+=`<span class="g-tick" style="left:${pct(m)}">${toTime(m)}</span>`;});
+  ticks.forEach(m=>{
+    const isMajor=(m%60===0);
+    h+=`<span class="g-tick${isMajor?'':' minor'}" style="left:${pct(m)}">${toTime(m)}</span>`;
+    h+=`<span class="g-tick-mark${isMajor?' major':''}" style="left:${pct(m)}"></span>`;
+  });
   h+=`</div></div>`;
+  // grid lines for tracks
+  let grid=`<div class="g-grid">`;
+  ticks.forEach(m=>{ if(m===shS||m===shE) return;
+    grid+=`<div class="g-grid-ln${m%60===0?' major':''}" style="left:${pct(m)}"></div>`;
+  });
+  grid+=`</div>`;
   h+=`<div class="g-sec"><div class="g-sec-lbl">Spreader tables</div><div class="g-sec-ln"></div></div>`;
   [...new Set(plan.result.map(l=>l.spreader))].sort((a,b)=>a-b).forEach(sp=>{
-    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">SPREADER-${sp}</div><div class="g-rlbl-s">Table ${sp}</div></div><div class="g-track">`;
-    breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name}"></div>`;});
-    plan.result.filter(l=>l.spreader===sp).forEach(l=>{h+=`<div class="g-bar g-sp" style="left:${pct(l.spreadStartMin)};width:${wid(l.spreadDur)}" title="${l.layNo}|${l.style}|${l.color}|${l.plies}pl|${l.spreadDur}min">${l.layNo}</div>`;});
+    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">SPREADER-${sp}</div><div class="g-rlbl-s">Table ${sp}</div></div><div class="g-track">${grid}`;
+    breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name} (${b.from}–${b.to})"></div>`;});
+    plan.result.filter(l=>l.spreader===sp).forEach(l=>{h+=`<div class="g-bar g-sp" style="left:${pct(l.spreadStartMin)};width:${wid(l.spreadDur)}" title="${l.layNo} · ${l.style} · ${l.color} · ${l.plies}pl · ${l.spreadDur}min">${l.layNo}</div>`;});
     h+=`</div></div>`;
   });
   h+=`<div class="g-div"><div class="g-div-sp"></div><div class="g-div-ln"></div></div>`;
   h+=`<div class="g-sec"><div class="g-sec-lbl">Auto cutters</div><div class="g-sec-ln"></div></div>`;
   for(let c=0;c<s.numCutters;c++){
-    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">CUTTER-${c+1}</div><div class="g-rlbl-s">Auto cutter</div></div><div class="g-track">`;
-    breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name}">${b.name.slice(0,5)}</div>`;});
-    (plan.idleWindows[c]||[]).forEach(w=>{h+=`<div class="g-bar g-id" style="left:${pct(w.from)};width:${wid(w.to-w.from)}" title="IDLE ${Math.round(w.dur)}min">IDLE ${Math.round(w.dur)}m</div>`;});
-    plan.result.filter(l=>l.cutterNum===c+1).sort((a,b)=>a.cutStart-b.cutStart).forEach(l=>{h+=`<div class="g-bar g-ct" style="left:${pct(l.cutStart)};width:${wid(l.cutDur)}" title="${l.layNo}|${l.cutDur}min|${l.status}">${l.layNo}</div>`;});
+    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">CUTTER-${c+1}</div><div class="g-rlbl-s">Auto cutter</div></div><div class="g-track">${grid}`;
+    breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name} (${b.from}–${b.to})"></div>`;});
+    (plan.idleWindows[c]||[]).forEach(w=>{h+=`<div class="g-bar g-id" style="left:${pct(w.from)};width:${wid(w.to-w.from)}" title="IDLE ${Math.round(w.dur)}min">${w.dur>=20?'IDLE '+Math.round(w.dur)+'m':''}</div>`;});
+    plan.result.filter(l=>l.cutterNum===c+1).sort((a,b)=>a.cutStart-b.cutStart).forEach(l=>{h+=`<div class="g-bar g-ct" style="left:${pct(l.cutStart)};width:${wid(l.cutDur)}" title="${l.layNo} · ${l.cutDur}min · ${l.status}">${l.layNo}</div>`;});
     h+=`</div></div>`;
   }
+  // legend
+  h+=`<div class="legend">
+    <div class="leg-item"><div class="leg-sw g-sp"></div>Spreading</div>
+    <div class="leg-item"><div class="leg-sw g-ct"></div>Cutting</div>
+    <div class="leg-item"><div class="leg-sw g-id"></div>Idle</div>
+    <div class="leg-item"><div class="leg-sw g-brk"></div>Break</div>
+  </div>`;
   document.getElementById('ganttOuter').innerHTML=h;
 }
 
