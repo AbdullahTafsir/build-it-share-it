@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+
+import { StandaloneAppFrame } from "../components/StandaloneAppFrame";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -12,10 +13,5 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  useEffect(() => { window.location.replace("/index.html"); }, []);
-  return (
-    <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", fontFamily: "system-ui" }}>
-      <p>Loading Cutting Dept app… <a href="/index.html">open directly</a></p>
-    </div>
-  );
+  return <StandaloneAppFrame />;
 }
