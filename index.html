@@ -658,14 +658,22 @@ function toast(msg, type='success'){
   t._t=setTimeout(()=>t.style.display='none',3200);
 }
 
-// ─── CONFIG (localStorage) ───────────────────
-function loadConfig(){ try{return JSON.parse(localStorage.getItem('sb_cfg')||'null');}catch{return null;} }
+// ─── CONFIG (built-in shared backend) ────────
+const DEFAULT_CFG = {
+  url: 'https://piolvcfjkjfzvxwbpjbg.supabase.co',
+  key: 'sb_publishable_7u6Cb3aoOEdlK47RoJjEIw__KBLZSB7'
+};
+function loadConfig(){
+  try{ const saved = JSON.parse(localStorage.getItem('sb_cfg')||'null'); if(saved) return saved; }catch{}
+  return DEFAULT_CFG;
+}
 function saveConfig(c){ localStorage.setItem('sb_cfg', JSON.stringify(c)); }
 function clearConfig(){ localStorage.removeItem('sb_cfg'); sb=null; }
 function initSupabase(){
   const c=loadConfig(); if(!c) return false;
   try{ sb=window.supabase.createClient(c.url, c.key); return true; }catch{ return false; }
 }
+
 function copySchema(){ navigator.clipboard.writeText(SCHEMA_SQL); toast('Schema copied to clipboard'); }
 
 // ─── ACTIVITY HELPER ─────────────────────────
