@@ -571,6 +571,71 @@ tbody tr:hover td{background:var(--gray1)}
 <script>
 // ─── STATE ───────────────────────────────────
 let breaksList=[], lays=[], rowId=0, stylesMaster=[], currentPlan=null, dbConnected=false;
+let sb=null;
+
+// ─── SQL SCHEMA (run once in Supabase SQL editor) ──
+const SCHEMA_SQL = `-- Cutting Dept Gantt — Supabase schema
+create table if not exists public.app_settings (
+  id int primary key default 1,
+  shift_start text default '07:00',
+  shift_end text default '18:00',
+  num_cutters int default 2,
+  breaks jsonb default '[]'::jsonb
+);
+insert into public.app_settings (id) values (1) on conflict do nothing;
+
+create table if not exists public.styles (
+  id uuid primary key default gen_random_uuid(),
+  code text unique not null,
+  buyer text, description text,
+  default_cut_dur int default 30,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.lays (
+  id uuid primary key default gen_random_uuid(),
+  plan_date date not null,
+  priority int, session text, lay_no text,
+  style text, buyer text, color text,
+  plies int, spreader int,
+  spread_start text, spread_dur int, cut_dur int,
+  created_at timestamptz default now()
+);
+create index if not exists lays_date_idx on public.lays(plan_date);
+
+create table if not exists public.plans (
+  id uuid primary key default gen_random_uuid(),
+  name text, plan_date date,
+  settings jsonb, input_lays jsonb,
+  result jsonb, idle_windows jsonb, summary jsonb,
+  created_at timestamptz default now()
+);
+create index if not exists plans_created_idx on public.plans(created_at desc);
+
+create table if not exists public.activity (
+  id uuid primary key default gen_random_uuid(),
+  ts timestamptz default now(),
+  user_name text default 'System',
+  action text, detail text
+);
+create index if not exists activity_ts_idx on public.activity(ts desc);
+
+-- Demo policies: allow anon full access (single-user / shareable demo).
+-- Tighten with auth if you need multi-user isolation.
+alter table public.app_settings enable row level security;
+alter table public.styles enable row level security;
+alter table public.lays enable row level security;
+alter table public.plans enable row level security;
+alter table public.activity enable row level security;
+
+grant select,insert,update,delete on public.app_settings,public.styles,public.lays,public.plans,public.activity to anon, authenticated;
+
+do $$ begin
+  for t in select unnest(array['app_settings','styles','lays','plans','activity']) loop
+    execute format('drop policy if exists "anon_all" on public.%I', t);
+    execute format('create policy "anon_all" on public.%I for all to anon using (true) with check (true)', t);
+  end loop;
+end $$;`;
 
 // ─── UTILS ───────────────────────────────────
 const toMin  = t => { const p=t.split(':'); return +p[0]*60+ +p[1]; };
@@ -587,14 +652,279 @@ function toast(msg, type='success'){
   t._t=setTimeout(()=>t.style.display='none',3200);
 }
 
-async function api(method, path, body){
-  const opts={method,headers:{'Content-Type':'application/json'}};
-  if(body) opts.body=JSON.stringify(body);
-  const res=await fetch(path,opts);
-  const data=await res.json();
-  if(!res.ok) throw new Error(data.error||'Request failed');
-  return data;
+// ─── CONFIG (localStorage) ───────────────────
+function loadConfig(){ try{return JSON.parse(localStorage.getItem('sb_cfg')||'null');}catch{return null;} }
+function saveConfig(c){ localStorage.setItem('sb_cfg', JSON.stringify(c)); }
+function clearConfig(){ localStorage.removeItem('sb_cfg'); sb=null; }
+function initSupabase(){
+  const c=loadConfig(); if(!c) return false;
+  try{ sb=window.supabase.createClient(c.url, c.key); return true; }catch{ return false; }
 }
+function copySchema(){ navigator.clipboard.writeText(SCHEMA_SQL); toast('Schema copied to clipboard'); }
+
+// ─── ACTIVITY HELPER ─────────────────────────
+async function logActivity(action, detail){
+  if(!sb) return;
+  try{ await sb.from('activity').insert({action, detail, user_name:'User'}); }catch{}
+}
+
+// ─── SCHEDULER (in-browser) ──────────────────
+function generateSchedule(laysIn, settings){
+  const breaks=(settings.breaks||[]).map(b=>({from:toMin(b.from),to:toMin(b.to),name:b.name}));
+  const shS=toMin(settings.shiftStart), shE=toMin(settings.shiftEnd);
+  const nC=settings.numCutters;
+
+  // Push past breaks: if `start` falls inside a break, advance to break end
+  function skipBreaks(start){
+    let changed=true;
+    while(changed){ changed=false;
+      for(const b of breaks){ if(start>=b.from && start<b.to){ start=b.to; changed=true; } }
+    }
+    return start;
+  }
+  // Total break minutes that overlap [a,b)
+  function brkOverlap(a,b){
+    let o=0; for(const k of breaks){ o+=Math.max(0,Math.min(b,k.to)-Math.max(a,k.from)); } return o;
+  }
+  // Run an activity of pure `dur` minutes starting at `start`, skipping breaks
+  function runUntil(start,dur){
+    start=skipBreaks(start);
+    let end=start+dur;
+    // extend end past any breaks within [start,end]
+    let changed=true;
+    while(changed){ changed=false;
+      for(const b of breaks){
+        if(b.from>=start && b.from<end){ end += (b.to-b.from); changed=true; }
+      }
+    }
+    return {start,end};
+  }
+
+  const sorted=[...laysIn].sort((a,b)=>a.priority-b.priority);
+  const spreaderReady={}; // spreader# -> minute
+  const cutterReady=Array(nC).fill(shS);
+  const result=[];
+  const idleWindows=Array.from({length:nC},()=>[]);
+  const cutTimePerCutter=Array(nC).fill(0);
+  const idlePerCutter=Array(nC).fill(0);
+
+  for(const l of sorted){
+    const spr=l.spreader;
+    const spReadyTime=spreaderReady[spr]??shS;
+    const requestedStart=Math.max(toMin(l.spreadStart||settings.shiftStart), spReadyTime, shS);
+    const sp=runUntil(requestedStart, l.spreadDur);
+    spreaderReady[spr]=sp.end;
+
+    // Assign to cutter that's free earliest
+    let cIdx=0; for(let i=1;i<nC;i++){ if(cutterReady[i]<cutterReady[cIdx]) cIdx=i; }
+    const cutEarliest=Math.max(cutterReady[cIdx], sp.end);
+    const ct=runUntil(cutEarliest, l.cutDur);
+    const idleDur=Math.max(0, cutEarliest - cutterReady[cIdx]);
+    const tableGap=Math.max(0, cutEarliest - sp.end);
+
+    if(idleDur>2){
+      idleWindows[cIdx].push({from:cutterReady[cIdx],to:cutEarliest,dur:idleDur,layNo:l.layNo});
+      idlePerCutter[cIdx]+=idleDur;
+    }
+    cutterReady[cIdx]=ct.end;
+    cutTimePerCutter[cIdx]+=l.cutDur;
+
+    const status= ct.end>shE ? 'OVERTIME' : (tableGap>5 ? 'GAP' : 'OK');
+
+    result.push({
+      ...l,
+      spreadStartMin:sp.start, spreadEndMin:sp.end,
+      spreadStartTime:toTime(sp.start), spreadEndTime:toTime(sp.end),
+      cutterNum:cIdx+1,
+      cutStart:ct.start, cutEnd:ct.end,
+      cutStartTime:toTime(ct.start), cutEndTime:toTime(ct.end),
+      idleDur:Math.round(idleDur), tableGap:Math.round(tableGap),
+      status
+    });
+  }
+
+  const totalCuttingTime=cutTimePerCutter.reduce((a,b)=>a+b,0);
+  const totalIdleTime=idlePerCutter.reduce((a,b)=>a+b,0);
+  const totalBrk=breaks.reduce((a,b)=>a+(b.to-b.from),0);
+  const avail=Math.max(1,((shE-shS)-totalBrk)*nC);
+  const utilization=Math.round(totalCuttingTime/avail*100);
+  const issues=result.filter(r=>r.status!=='OK').length;
+
+  return {
+    result, idleWindows,
+    summary:{
+      shiftStart:settings.shiftStart, shiftEnd:settings.shiftEnd, numCutters:nC,
+      totalLays:result.length, totalPlies:result.reduce((a,r)=>a+(+r.plies||0),0),
+      totalCuttingTime, totalIdleTime, utilization, issues,
+      cutTimePerCutter, idlePerCutter
+    }
+  };
+}
+
+// ─── DB MAPPERS ──────────────────────────────
+const layToDb = (l,d) => ({
+  plan_date:l.planDate||d, priority:l.priority, session:l.session, lay_no:l.layNo,
+  style:l.style, buyer:l.buyer, color:l.color, plies:l.plies, spreader:l.spreader,
+  spread_start:l.spreadStart, spread_dur:l.spreadDur, cut_dur:l.cutDur
+});
+const layFromDb = r => ({
+  id:r.id, planDate:r.plan_date, priority:r.priority, session:r.session, layNo:r.lay_no,
+  style:r.style, buyer:r.buyer, color:r.color, plies:r.plies, spreader:r.spreader,
+  spreadStart:r.spread_start, spreadDur:r.spread_dur, cutDur:r.cut_dur
+});
+
+// ─── API ROUTER (Supabase-backed) ────────────
+async function api(method, path, body){
+  // Config routes don't need sb
+  if(path==='/api/config/status'){ return {configured: !!loadConfig()}; }
+  if(path==='/api/config/setup'){
+    saveConfig({url:body.supabaseUrl, key:body.supabaseKey});
+    if(!initSupabase()) throw new Error('Failed to init Supabase client');
+    // Quick connectivity probe
+    const {error}=await sb.from('app_settings').select('id').limit(1);
+    if(error) throw new Error('Connected, but schema missing — did you run the SQL? ('+error.message+')');
+    return {message:'Connected to Supabase!'};
+  }
+  if(path==='/api/config' && method==='DELETE'){ clearConfig(); return {ok:true}; }
+  if(path==='/api/health'){
+    if(!sb && !initSupabase()) return {status:'no_db'};
+    const {error}=await sb.from('app_settings').select('id').limit(1);
+    return {status: error?'error':'ok'};
+  }
+
+  if(!sb && !initSupabase()) throw new Error('Not connected to Supabase');
+
+  // Settings
+  if(path==='/api/settings' && method==='GET'){
+    const {data,error}=await sb.from('app_settings').select('*').eq('id',1).maybeSingle();
+    if(error) throw new Error(error.message);
+    return data ? {shiftStart:data.shift_start, shiftEnd:data.shift_end, numCutters:data.num_cutters, breaks:data.breaks||[]}
+                : {shiftStart:'07:00', shiftEnd:'18:00', numCutters:2, breaks:[]};
+  }
+  if(path==='/api/settings' && method==='PUT'){
+    const {error}=await sb.from('app_settings').upsert({id:1, shift_start:body.shiftStart, shift_end:body.shiftEnd, num_cutters:body.numCutters, breaks:body.breaks||[]});
+    if(error) throw new Error(error.message);
+    return {ok:true};
+  }
+
+  // Styles
+  if(path==='/api/styles' && method==='GET'){
+    const {data,error}=await sb.from('styles').select('*').order('code');
+    if(error) throw new Error(error.message);
+    return (data||[]).map(s=>({id:s.id,code:s.code,buyer:s.buyer,description:s.description,defaultCutDur:s.default_cut_dur}));
+  }
+  if(path==='/api/styles' && method==='POST'){
+    const {error}=await sb.from('styles').insert({code:body.code, buyer:body.buyer, description:body.description, default_cut_dur:body.defaultCutDur});
+    if(error) throw new Error(error.message);
+    logActivity('style_add','Added style '+body.code);
+    return {ok:true};
+  }
+  if(path.startsWith('/api/styles/') && method==='DELETE'){
+    const id=path.split('/').pop();
+    const {error}=await sb.from('styles').delete().eq('id',id);
+    if(error) throw new Error(error.message);
+    logActivity('style_delete','Deleted style');
+    return {ok:true};
+  }
+
+  // Lays
+  if(path.startsWith('/api/lays') && method==='GET'){
+    const d=new URLSearchParams(path.split('?')[1]||'').get('date');
+    const {data,error}=await sb.from('lays').select('*').eq('plan_date',d).order('priority');
+    if(error) throw new Error(error.message);
+    return (data||[]).map(layFromDb);
+  }
+  if(path.startsWith('/api/lays') && method==='DELETE'){
+    const d=new URLSearchParams(path.split('?')[1]||'').get('date');
+    const {error}=await sb.from('lays').delete().eq('plan_date',d);
+    if(error) throw new Error(error.message);
+    return {ok:true};
+  }
+  if(path==='/api/lays/bulk' && method==='POST'){
+    const d=today();
+    const rows=body.lays.map(l=>layToDb(l, l.planDate||d));
+    const {error}=await sb.from('lays').insert(rows);
+    if(error) throw new Error(error.message);
+    return {ok:true, count:rows.length};
+  }
+
+  // Generate plan (client-side scheduler + save)
+  if(path==='/api/schedule/generate' && method==='POST'){
+    const settings=await api('GET','/api/settings');
+    const sch=generateSchedule(body.lays, settings);
+    // Replace lays for date
+    await sb.from('lays').delete().eq('plan_date',body.planDate);
+    await sb.from('lays').insert(body.lays.map(l=>layToDb(l,body.planDate)));
+    // Save plan
+    const planRow={
+      name:body.planName, plan_date:body.planDate,
+      settings, input_lays:body.lays,
+      result:sch.result, idle_windows:sch.idleWindows, summary:sch.summary
+    };
+    const {data,error}=await sb.from('plans').insert(planRow).select().single();
+    if(error) throw new Error(error.message);
+    logActivity('plan_generate', `Generated ${body.planName}`);
+    return {plan:{
+      id:data.id, name:data.name, planDate:data.plan_date, createdAt:data.created_at,
+      settings, inputLays:body.lays, result:sch.result, idleWindows:sch.idleWindows,
+      summary:sch.summary, savedToSupabase:true
+    }};
+  }
+
+  // Plans
+  if(path.startsWith('/api/plans') && method==='GET' && !path.match(/\/api\/plans\/[\w-]+$/)){
+    const limit=+(new URLSearchParams(path.split('?')[1]||'').get('limit')||50);
+    const {data,error}=await sb.from('plans').select('id,name,plan_date,created_at,summary').order('created_at',{ascending:false}).limit(limit);
+    if(error) throw new Error(error.message);
+    return (data||[]).map(p=>({id:p.id,name:p.name,planDate:p.plan_date,createdAt:p.created_at,summary:p.summary}));
+  }
+  if(path.match(/\/api\/plans\/[\w-]+$/) && method==='GET'){
+    const id=path.split('/').pop();
+    const {data,error}=await sb.from('plans').select('*').eq('id',id).single();
+    if(error) throw new Error(error.message);
+    return {id:data.id,name:data.name,planDate:data.plan_date,createdAt:data.created_at,
+      settings:data.settings,inputLays:data.input_lays,result:data.result,idleWindows:data.idle_windows,summary:data.summary};
+  }
+  if(path.match(/\/api\/plans\/[\w-]+$/) && method==='DELETE'){
+    const id=path.split('/').pop();
+    const {error}=await sb.from('plans').delete().eq('id',id);
+    if(error) throw new Error(error.message);
+    logActivity('plan_delete','Deleted plan');
+    return {ok:true};
+  }
+
+  // Activity
+  if(path.startsWith('/api/activity') && method==='GET'){
+    const limit=+(new URLSearchParams(path.split('?')[1]||'').get('limit')||100);
+    const {data,error}=await sb.from('activity').select('*').order('ts',{ascending:false}).limit(limit);
+    if(error) throw new Error(error.message);
+    return (data||[]).map(l=>({action:l.action,detail:l.detail,userName:l.user_name,timestamp:l.ts}));
+  }
+
+  // Analytics
+  if(path.startsWith('/api/analytics/summary')){
+    const days=+(new URLSearchParams(path.split('?')[1]||'').get('days')||30);
+    const since=new Date(Date.now()-days*86400000).toISOString();
+    const {data:all}=await sb.from('plans').select('id,plan_date,created_at,summary');
+    const {data:recent}=await sb.from('plans').select('id,plan_date,created_at,summary').gte('created_at',since).order('created_at',{ascending:false});
+    const rec=recent||[];
+    const avg=rec.length?Math.round(rec.reduce((a,p)=>a+(p.summary?.utilization||0),0)/rec.length):0;
+    return {
+      totalPlans:(all||[]).length, recentPlans:rec.length,
+      avgUtilization:avg,
+      totalLays:rec.reduce((a,p)=>a+(p.summary?.totalLays||0),0),
+      totalPlies:rec.reduce((a,p)=>a+(p.summary?.totalPlies||0),0),
+      plansOverTime:rec.slice(0,20).map(p=>({date:p.plan_date,lays:p.summary?.totalLays||0,plies:p.summary?.totalPlies||0,utilization:p.summary?.utilization||0}))
+    };
+  }
+
+  throw new Error('Unknown route: '+method+' '+path);
+}
+
+// Populate schema text on load
+document.addEventListener('DOMContentLoaded',()=>{
+  const el=document.getElementById('schemaSql'); if(el) el.textContent=SCHEMA_SQL;
+});
 
 function switchPanel(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
