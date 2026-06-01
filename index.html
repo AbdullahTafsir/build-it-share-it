@@ -1515,6 +1515,7 @@ async function exportReport(format){
       <td>SPR-${l.spreader}</td><td>${l.spreadStartTime}</td><td>${l.spreadEndTime}</td><td style="text-align:right">${l.spreadDur}m</td>
       <td>CUT-${l.cutterNum}</td><td>${l.cutStartTime}</td><td>${l.cutEndTime}</td><td style="text-align:right">${l.cutDur}m</td>
       <td style="text-align:right;color:${l.idleDur>30?'#B71C1C':'#4A5568'}">${l.idleDur||0}m</td>
+      <td style="text-align:right;color:${l.tableGap>30?'#854F0B':'#4A5568'}">${l.tableGap||0}m</td>
       <td style="color:${statusColor};font-weight:600">${l.status||'OK'}</td>
     </tr>`;
   });
@@ -1553,7 +1554,7 @@ async function exportReport(format){
         <th style="padding:8px">Color</th><th style="padding:8px;text-align:right">Plies</th>
         <th style="padding:8px">Spreader</th><th style="padding:8px">Spread Start</th><th style="padding:8px">Spread End</th><th style="padding:8px;text-align:right">Dur</th>
         <th style="padding:8px">Cutter</th><th style="padding:8px">Cut Start</th><th style="padding:8px">Cut End</th><th style="padding:8px;text-align:right">Dur</th>
-        <th style="padding:8px;text-align:right">Idle</th><th style="padding:8px">Status</th>
+        <th style="padding:8px;text-align:right">Cutter Idle</th><th style="padding:8px;text-align:right">Table Wait</th><th style="padding:8px">Status</th>
       </tr></thead>
       <tbody style="background:#fff">${rows.replace(/<td>/g,'<td style="padding:7px 8px;border-top:1px solid #ECEEF2">').replace(/<td style="text-align:right/g,'<td style="padding:7px 8px;border-top:1px solid #ECEEF2;text-align:right').replace(/<td style="text-align:right;color:/g,'<td style="padding:7px 8px;border-top:1px solid #ECEEF2;text-align:right;color:').replace(/<td style="color:/g,'<td style="padding:7px 8px;border-top:1px solid #ECEEF2;color:')}</tbody>
     </table>
