@@ -6,6 +6,8 @@
 <title>CW Cutting Department - Gantt Chart Planning System</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --blue:#1A5FA8;--blue-lt:#E8F1FB;--blue-dk:#0C3F73;
@@ -463,7 +465,11 @@ tbody tr:hover td{background:var(--gray1)}
         <div class="pg-hdr">
           <div><div class="pg-title">Gantt chart</div>
           <div class="pg-sub" id="ganttSub">Generate a plan to see the Gantt</div></div>
-          <button class="btn btn-warn btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="exportReport('pdf')">📄 Export PDF</button>
+            <button class="btn btn-primary btn-sm" onclick="exportReport('png')">🖼 Export PNG</button>
+            <button class="btn btn-warn btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+          </div>
         </div>
         <div class="kpi-grid kpi4" id="ganttKpi"></div>
         <div class="gantt-wrap">
@@ -1486,6 +1492,113 @@ async function loadAnalytics(){
         </table></div>`
       :'<p style="color:var(--gray4);font-size:13px">No history yet. Generate plans to see analytics.</p>';
   }catch(e){ document.getElementById('analyticsKpi').innerHTML=`<p style="color:var(--red)">Error: ${e.message}</p>`; }
+}
+
+// ─── PDF / PNG REPORT EXPORT ──────────────────
+async function exportReport(format){
+  if(!currentPlan){ toast('Generate a plan first!','error'); return; }
+  toast('Building report…');
+  const s=currentPlan.summary||{};
+  const plan=currentPlan;
+  const now=new Date();
+  const dateStr=new Date(plan.planDate||now).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const genStr=now.toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const ganttHTML=document.getElementById('ganttOuter').innerHTML;
+
+  // Build summary table rows
+  let rows='';
+  (plan.result||[]).forEach(l=>{
+    const statusColor=l.status&&l.status.toLowerCase().includes('ok')?'#2E7D32':(l.idleDur>30?'#B71C1C':'#854F0B');
+    rows+=`<tr>
+      <td>${l.priority}</td><td><b>${l.layNo}</b></td><td>${l.style||''}</td><td>${l.buyer||''}</td>
+      <td>${l.color||''}</td><td style="text-align:right">${l.plies||0}</td>
+      <td>SPR-${l.spreader}</td><td>${l.spreadStartTime}</td><td>${l.spreadEndTime}</td><td style="text-align:right">${l.spreadDur}m</td>
+      <td>CUT-${l.cutterNum}</td><td>${l.cutStartTime}</td><td>${l.cutEndTime}</td><td style="text-align:right">${l.cutDur}m</td>
+      <td style="text-align:right;color:${l.idleDur>30?'#B71C1C':'#4A5568'}">${l.idleDur||0}m</td>
+      <td style="color:${statusColor};font-weight:600">${l.status||'OK'}</td>
+    </tr>`;
+  });
+
+  const html=`
+  <div id="reportRender" style="position:fixed;left:-99999px;top:0;width:1600px;background:#fff;font-family:'DM Sans',sans-serif;color:#1A202C;padding:32px">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1A5FA8;padding-bottom:18px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="width:64px;height:64px;background:linear-gradient(135deg,#1A5FA8,#0A5240);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;font-weight:700">CW</div>
+        <div>
+          <div style="font-size:24px;font-weight:700;letter-spacing:-.02em">CW Cutting Department — Daily Schedule</div>
+          <div style="font-size:13px;color:#9099A8;margin-top:4px">Auto Spreader &amp; Auto Cutter Planning System</div>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:12px;color:#4A5568;line-height:1.7">
+        <div><b style="color:#1A202C">Date:</b> ${dateStr}</div>
+        <div><b style="color:#1A202C">Plan:</b> ${plan.name||'—'}</div>
+        <div><b style="color:#1A202C">Generated:</b> ${genStr}</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:#E8F1FB;border-radius:12px;padding:16px"><div style="font-size:30px;font-weight:700;color:#1A5FA8">${s.utilization||0}%</div><div style="font-size:11px;font-weight:700;color:#4A5568;letter-spacing:.06em;margin-top:4px">CUTTER UTILIZATION</div><div style="font-size:11px;color:#9099A8;margin-top:4px">${durStr(s.totalCuttingTime||0)} cutting</div></div>
+      <div style="background:#EDE8FB;border-radius:12px;padding:16px"><div style="font-size:30px;font-weight:700;color:#5B3FA0">${durStr(s.totalIdleTime||0)}</div><div style="font-size:11px;font-weight:700;color:#4A5568;letter-spacing:.06em;margin-top:4px">TOTAL IDLE TIME</div><div style="font-size:11px;color:#9099A8;margin-top:4px">${(s.idlePerCutter||[]).length} cutters</div></div>
+      <div style="background:#E8F5E9;border-radius:12px;padding:16px"><div style="font-size:30px;font-weight:700;color:#2E7D32">${s.totalLays||0}</div><div style="font-size:11px;font-weight:700;color:#4A5568;letter-spacing:.06em;margin-top:4px">LAYS SCHEDULED</div><div style="font-size:11px;color:#9099A8;margin-top:4px">${(s.totalPlies||0).toLocaleString()} plies</div></div>
+      <div style="background:${s.issues?'#FFEBEE':'#E8F5E9'};border-radius:12px;padding:16px"><div style="font-size:30px;font-weight:700;color:${s.issues?'#B71C1C':'#2E7D32'}">${s.issues||0}</div><div style="font-size:11px;font-weight:700;color:#4A5568;letter-spacing:.06em;margin-top:4px">ISSUES</div><div style="font-size:11px;color:#9099A8;margin-top:4px">${s.issues?'Check schedule':'All OK ✅'}</div></div>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;color:#4A5568;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Gantt Chart</div>
+    <div style="border:1px solid #ECEEF2;border-radius:12px;padding:14px;margin-bottom:22px;overflow:hidden">${ganttHTML}</div>
+
+    <div style="font-size:13px;font-weight:700;color:#4A5568;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Lay-by-Lay Summary</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #ECEEF2;border-radius:8px;overflow:hidden">
+      <thead><tr style="background:#0C3F73;color:#fff;text-align:left">
+        <th style="padding:8px">#</th><th style="padding:8px">Lay No</th><th style="padding:8px">Style</th><th style="padding:8px">Buyer</th>
+        <th style="padding:8px">Color</th><th style="padding:8px;text-align:right">Plies</th>
+        <th style="padding:8px">Spreader</th><th style="padding:8px">Spread Start</th><th style="padding:8px">Spread End</th><th style="padding:8px;text-align:right">Dur</th>
+        <th style="padding:8px">Cutter</th><th style="padding:8px">Cut Start</th><th style="padding:8px">Cut End</th><th style="padding:8px;text-align:right">Dur</th>
+        <th style="padding:8px;text-align:right">Idle</th><th style="padding:8px">Status</th>
+      </tr></thead>
+      <tbody style="background:#fff">${rows.replace(/<td>/g,'<td style="padding:7px 8px;border-top:1px solid #ECEEF2">').replace(/<td style="text-align:right/g,'<td style="padding:7px 8px;border-top:1px solid #ECEEF2;text-align:right').replace(/<td style="text-align:right;color:/g,'<td style="padding:7px 8px;border-top:1px solid #ECEEF2;text-align:right;color:').replace(/<td style="color:/g,'<td style="padding:7px 8px;border-top:1px solid #ECEEF2;color:')}</tbody>
+    </table>
+
+    <div style="margin-top:18px;padding-top:12px;border-top:1px solid #ECEEF2;display:flex;justify-content:space-between;font-size:11px;color:#9099A8">
+      <div>Generated by CW Cutting Gantt Planning System</div>
+      <div>${genStr}</div>
+    </div>
+  </div>`;
+
+  const wrap=document.createElement('div'); wrap.innerHTML=html;
+  document.body.appendChild(wrap);
+  const node=wrap.querySelector('#reportRender');
+  try{
+    const canvas=await html2canvas(node,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+    const fname=`CW-Cutting-Schedule_${plan.planDate||now.toISOString().slice(0,10)}`;
+    if(format==='png'){
+      const a=document.createElement('a');
+      a.href=canvas.toDataURL('image/png'); a.download=fname+'.png'; a.click();
+      toast('PNG exported ✓');
+    } else {
+      const {jsPDF}=window.jspdf;
+      const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+      const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+      const imgW=pw-10, imgH=canvas.height*imgW/canvas.width;
+      if(imgH<=ph-10){
+        pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',5,5,imgW,imgH);
+      } else {
+        // multi-page slice
+        const pageHpx=canvas.width*(ph-10)/imgW;
+        let y=0, page=0;
+        while(y<canvas.height){
+          const slice=document.createElement('canvas');
+          slice.width=canvas.width; slice.height=Math.min(pageHpx,canvas.height-y);
+          slice.getContext('2d').drawImage(canvas,0,y,canvas.width,slice.height,0,0,canvas.width,slice.height);
+          if(page>0) pdf.addPage();
+          pdf.addImage(slice.toDataURL('image/jpeg',0.92),'JPEG',5,5,imgW,slice.height*imgW/canvas.width);
+          y+=pageHpx; page++;
+        }
+      }
+      pdf.save(fname+'.pdf');
+      toast('PDF exported ✓');
+    }
+  } catch(e){ console.error(e); toast('Export failed: '+e.message,'error'); }
+  finally{ wrap.remove(); }
 }
 
 // ─── CSV EXPORT ───────────────────────────────
