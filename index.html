@@ -1568,7 +1568,23 @@ async function exportReport(format){
   document.body.appendChild(wrap);
   const node=wrap.querySelector('#reportRender');
   try{
-    const canvas=await html2canvas(node,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+    const canvas=await html2canvas(node,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,
+      onclone:(doc)=>{
+        doc.querySelectorAll('#reportRender .g-id').forEach(el=>{
+          el.style.background='#dc2626';
+          el.style.backgroundImage='linear-gradient(135deg,#ef4444 25%,#b91c1c 25%,#b91c1c 50%,#ef4444 50%,#ef4444 75%,#b91c1c 75%)';
+          el.style.backgroundSize='10px 10px';
+          el.style.color='#fff';
+          el.style.border='1px solid #991b1b';
+        });
+        doc.querySelectorAll('#reportRender .g-brk').forEach(el=>{
+          el.style.background='#059669';
+          el.style.backgroundImage='linear-gradient(135deg,#10b981 25%,#047857 25%,#047857 50%,#10b981 50%,#10b981 75%,#047857 75%)';
+          el.style.backgroundSize='10px 10px';
+          el.style.color='#fff';
+        });
+      }
+    });
     const fname=`CW-Cutting-Schedule_${plan.planDate||now.toISOString().slice(0,10)}`;
     if(format==='png'){
       const a=document.createElement('a');
