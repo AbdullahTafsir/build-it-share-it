@@ -1515,6 +1515,7 @@ async function exportReport(format){
       <td>SPR-${l.spreader}</td><td>${l.spreadStartTime}</td><td>${l.spreadEndTime}</td><td style="text-align:right">${l.spreadDur}m</td>
       <td>CUT-${l.cutterNum}</td><td>${l.cutStartTime}</td><td>${l.cutEndTime}</td><td style="text-align:right">${l.cutDur}m</td>
       <td style="text-align:right;color:${l.idleDur>30?'#B71C1C':'#4A5568'}">${l.idleDur||0}m</td>
+      <td style="text-align:right;color:${l.tableGap>30?'#854F0B':'#4A5568'}">${l.tableGap||0}m</td>
       <td style="color:${statusColor};font-weight:600">${l.status||'OK'}</td>
     </tr>`;
   });
