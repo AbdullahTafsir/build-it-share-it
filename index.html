@@ -211,6 +211,9 @@ tbody tr:hover td{background:var(--gray1)}
 .g-ct{background:linear-gradient(180deg,#8b5cf6,#7c3aed);color:#fff}
 .g-id{background:repeating-linear-gradient(45deg,#ef4444,#ef4444 6px,#dc2626 6px,#dc2626 12px);color:#fff;opacity:.92}
 .g-brk{background:repeating-linear-gradient(45deg,#10b981,#10b981 5px,#059669 5px,#059669 10px);color:#fff;opacity:.88}
+.g-ct{cursor:pointer}
+.g-ph{background:repeating-linear-gradient(45deg,rgba(139,92,246,.55),rgba(139,92,246,.55) 6px,rgba(124,58,237,.55) 6px,rgba(124,58,237,.55) 12px);color:#fff;border:1.5px dashed #7c3aed;animation:phPulse 1s ease-in-out infinite}
+@keyframes phPulse{0%,100%{opacity:.85}50%{opacity:1}}
 .g-div{height:1px;background:var(--gray2);margin:12px 0;display:flex}
 .g-div-sp{width:170px;flex-shrink:0}.g-div-ln{flex:1}
 .g-sec{display:flex;align-items:center;margin-bottom:8px;margin-top:4px}
@@ -1240,7 +1243,7 @@ function renderGantt(plan){
   grid+=`</div>`;
   h+=`<div class="g-sec"><div class="g-sec-lbl">Spreader tables</div><div class="g-sec-ln"></div></div>`;
   [...new Set(plan.result.map(l=>l.spreader))].sort((a,b)=>a-b).forEach(sp=>{
-    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">SPREADER-${sp}</div><div class="g-rlbl-s">Table ${sp}</div></div><div class="g-track">${grid}`;
+    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">SPREADER-${sp}</div><div class="g-rlbl-s">Table ${sp}</div></div><div class="g-track" data-spr="${sp}">${grid}`;
     breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name} (${b.from}–${b.to})"></div>`;});
     plan.result.filter(l=>l.spreader===sp).forEach(l=>{h+=`<div class="g-bar g-sp" style="left:${pct(l.spreadStartMin)};width:${wid(l.spreadDur)}" title="${l.layNo} · ${l.style} · ${l.color} · ${l.plies}pl · ${l.spreadDur}min">${l.layNo}</div>`;});
     h+=`</div></div>`;
@@ -1251,7 +1254,7 @@ function renderGantt(plan){
     h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">CUTTER-${c+1}</div><div class="g-rlbl-s">Auto cutter</div></div><div class="g-track">${grid}`;
     breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name} (${b.from}–${b.to})"></div>`;});
     (plan.idleWindows[c]||[]).forEach(w=>{h+=`<div class="g-bar g-id" style="left:${pct(w.from)};width:${wid(w.to-w.from)}" title="IDLE ${Math.round(w.dur)}min">${w.dur>=20?'IDLE '+Math.round(w.dur)+'m':''}</div>`;});
-    plan.result.filter(l=>l.cutterNum===c+1).sort((a,b)=>a.cutStart-b.cutStart).forEach(l=>{h+=`<div class="g-bar g-ct" style="left:${pct(l.cutStart)};width:${wid(l.cutDur)}" title="${l.layNo} · ${l.cutDur}min · ${l.status}">${l.layNo}</div>`;});
+    plan.result.filter(l=>l.cutterNum===c+1).sort((a,b)=>a.cutStart-b.cutStart).forEach(l=>{h+=`<div class="g-bar g-ct" style="left:${pct(l.cutStart)};width:${wid(l.cutDur)}" title="${l.layNo} · ${l.cutDur}min · ${l.status} (click to preview on spreader row)" onclick="showCutPreview('${l.layNo}',${l.spreader},${l.spreadStartMin+l.spreadDur},${l.cutDur})">${l.layNo}</div>`;});
     h+=`</div></div>`;
   }
   // legend
@@ -1263,6 +1266,25 @@ function renderGantt(plan){
   </div>`;
   document.getElementById('ganttOuter').innerHTML=h;
 }
+
+// ─── CUT PREVIEW ON SPREADER ROW ───────────────
+function showCutPreview(layNo, spr, startMin, dur){
+  if(!currentPlan) return;
+  const s=currentPlan.summary;
+  const shS=toMin(s.shiftStart), shL=toMin(s.shiftEnd)-shS;
+  const track=document.querySelector(`.g-track[data-spr="${spr}"]`);
+  if(!track) return;
+  track.querySelectorAll('.g-ph').forEach(n=>n.remove());
+  const ph=document.createElement('div');
+  ph.className='g-bar g-ph';
+  ph.style.left=((startMin-shS)/shL*100).toFixed(3)+'%';
+  ph.style.width=(dur/shL*100).toFixed(3)+'%';
+  ph.title=`Preview · ${layNo} cutting (${dur}min) — hides in 5s`;
+  ph.textContent=layNo;
+  track.appendChild(ph);
+  setTimeout(()=>ph.remove(), 5000);
+}
+
 
 // ─── RENDER SCHEDULE ──────────────────────────
 function renderSchedule(plan){
