@@ -1267,6 +1267,25 @@ function renderGantt(plan){
   document.getElementById('ganttOuter').innerHTML=h;
 }
 
+// ─── CUT PREVIEW ON SPREADER ROW ───────────────
+function showCutPreview(layNo, spr, startMin, dur){
+  if(!currentPlan) return;
+  const s=currentPlan.summary;
+  const shS=toMin(s.shiftStart), shL=toMin(s.shiftEnd)-shS;
+  const track=document.querySelector(`.g-track[data-spr="${spr}"]`);
+  if(!track) return;
+  track.querySelectorAll('.g-ph').forEach(n=>n.remove());
+  const ph=document.createElement('div');
+  ph.className='g-bar g-ph';
+  ph.style.left=((startMin-shS)/shL*100).toFixed(3)+'%';
+  ph.style.width=(dur/shL*100).toFixed(3)+'%';
+  ph.title=`Preview · ${layNo} cutting (${dur}min) — hides in 5s`;
+  ph.textContent=layNo;
+  track.appendChild(ph);
+  setTimeout(()=>ph.remove(), 5000);
+}
+
+
 // ─── RENDER SCHEDULE ──────────────────────────
 function renderSchedule(plan){
   document.getElementById('schedBody').innerHTML=plan.result.map(l=>{
