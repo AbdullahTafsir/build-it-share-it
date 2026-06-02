@@ -1022,6 +1022,14 @@ function switchPanel(name){
   if(name==='styles')   loadStyles();
   if(name==='activity') loadActivity();
   if(name==='analytics')loadAnalytics();
+  if(window.innerWidth<=768) toggleSidebar(false);
+}
+function toggleSidebar(force){
+  const sb=document.querySelector('.sidebar'); const bd=document.getElementById('sbBackdrop');
+  if(!sb) return;
+  const open = typeof force==='boolean' ? force : !sb.classList.contains('open');
+  sb.classList.toggle('open', open);
+  bd.classList.toggle('show', open);
 }
 function openModal(id) {
   document.getElementById(id).classList.add('open');
