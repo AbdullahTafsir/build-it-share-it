@@ -271,6 +271,61 @@ tbody tr:hover td{background:var(--gray1)}
 /* sync indicator */
 .sync-ring{display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.3);
   border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:4px;display:none}
+
+/* ════ HAMBURGER / MOBILE ════ */
+.hamburger{display:none;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:#fff;width:36px;height:32px;border-radius:6px;cursor:pointer;align-items:center;justify-content:center;padding:0}
+.hamburger svg{width:18px;height:18px}
+.sb-backdrop{display:none;position:fixed;inset:52px 0 0 0;background:rgba(0,0,0,.45);z-index:150}
+.sb-backdrop.show{display:block}
+
+/* ════ RESPONSIVE ════ */
+@media (max-width:900px){
+  .kpi4{grid-template-columns:repeat(2,1fr)}
+  .kpi3{grid-template-columns:repeat(2,1fr)}
+  .fg4{grid-template-columns:1fr 1fr}
+  .fg3{grid-template-columns:1fr 1fr}
+}
+@media (max-width:768px){
+  body{font-size:13px}
+  .topbar{padding:0 12px;height:52px}
+  .tb-title{font-size:12px;line-height:1.2;max-width:46vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-sub{display:none}
+  .tb-logo{width:26px;height:26px;font-size:14px}
+  .tb-left{gap:8px;min-width:0;flex:1}
+  .tb-right{gap:5px}
+  .tb-badge{display:none}
+  .tb-btn{padding:5px 8px;font-size:11px}
+  .hamburger{display:flex}
+
+  .layout{height:calc(100vh - 52px)}
+  .sidebar{position:fixed;left:0;top:52px;bottom:0;width:230px;z-index:160;
+    transform:translateX(-100%);transition:transform .22s ease;box-shadow:4px 0 24px rgba(0,0,0,.18)}
+  .sidebar.open{transform:translateX(0)}
+  .main{padding:12px;width:100%}
+
+  .card{padding:14px;border-radius:10px}
+  .kpi-grid{gap:8px;margin-bottom:12px}
+  .kpi4,.kpi3{grid-template-columns:repeat(2,1fr)}
+  .kpi-val{font-size:20px}
+  .kpi-card{padding:11px 12px}
+
+  .fg2,.fg3,.fg4{grid-template-columns:1fr}
+  .brk-row{grid-template-columns:1fr 1fr;gap:6px}
+  .brk-row > *:last-child{grid-column:span 2;justify-self:end}
+
+  /* setup wizard */
+  .setup-card{padding:24px 20px;width:94vw}
+  .splash-title{font-size:24px}
+
+  /* gantt already scrolls via .gantt-wrap; tighten padding */
+  .gantt-inner{padding:14px}
+}
+@media (max-width:480px){
+  .kpi4,.kpi3{grid-template-columns:1fr}
+  .tb-title{font-size:11px;max-width:40vw}
+  .main{padding:10px}
+}
 </style>
 </head>
 <body>
@@ -354,8 +409,11 @@ tbody tr:hover td{background:var(--gray1)}
 <div id="app">
   <div class="topbar">
     <div class="tb-left">
+      <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
       <div class="tb-logo">✂️</div>
-      <div>
+      <div style="min-width:0">
         <div class="tb-title">CW Cutting Department - Gantt Chart Planning System</div>
         <div class="tb-sub">Auto Spreader & Auto Cutter Scheduler</div>
       </div>
@@ -368,6 +426,7 @@ tbody tr:hover td{background:var(--gray1)}
     </div>
   </div>
 
+  <div class="sb-backdrop" id="sbBackdrop" onclick="toggleSidebar(false)"></div>
   <div class="layout">
     <nav class="sidebar">
       <div class="nav-grp">Planning</div>
@@ -963,6 +1022,14 @@ function switchPanel(name){
   if(name==='styles')   loadStyles();
   if(name==='activity') loadActivity();
   if(name==='analytics')loadAnalytics();
+  if(window.innerWidth<=768) toggleSidebar(false);
+}
+function toggleSidebar(force){
+  const sb=document.querySelector('.sidebar'); const bd=document.getElementById('sbBackdrop');
+  if(!sb) return;
+  const open = typeof force==='boolean' ? force : !sb.classList.contains('open');
+  sb.classList.toggle('open', open);
+  bd.classList.toggle('show', open);
 }
 function openModal(id) {
   document.getElementById(id).classList.add('open');
