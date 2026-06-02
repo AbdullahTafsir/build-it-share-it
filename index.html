@@ -285,15 +285,18 @@ tbody tr:hover td{background:var(--gray1)}
   .kpi3{grid-template-columns:repeat(2,1fr)}
   .fg4{grid-template-columns:1fr 1fr}
   .fg3{grid-template-columns:1fr 1fr}
+  .pg-title{font-size:18px}
 }
 @media (max-width:768px){
   body{font-size:13px}
-  .topbar{padding:0 12px;height:52px}
-  .tb-title{font-size:12px;line-height:1.2;max-width:46vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .topbar{padding:0 10px;height:52px}
+  .tb-title{font-size:12px;line-height:1.2;max-width:44vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-title-full{display:none}
+  .tb-title-short{display:inline}
   .tb-sub{display:none}
   .tb-logo{width:26px;height:26px;font-size:14px}
   .tb-left{gap:8px;min-width:0;flex:1}
-  .tb-right{gap:5px}
+  .tb-right{gap:4px;flex-shrink:0}
   .tb-badge{display:none}
   .tb-btn{padding:5px 8px;font-size:11px}
   .hamburger{display:flex}
@@ -302,29 +305,91 @@ tbody tr:hover td{background:var(--gray1)}
   .sidebar{position:fixed;left:0;top:52px;bottom:0;width:230px;z-index:160;
     transform:translateX(-100%);transition:transform .22s ease;box-shadow:4px 0 24px rgba(0,0,0,.18)}
   .sidebar.open{transform:translateX(0)}
-  .main{padding:12px;width:100%}
+  .main{padding:12px 10px;width:100%;overflow-x:hidden}
 
-  .card{padding:14px;border-radius:10px}
+  .card{padding:12px;border-radius:10px;margin-bottom:10px}
+  .card-hdr{flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .card-title{font-size:11px}
   .kpi-grid{gap:8px;margin-bottom:12px}
   .kpi4,.kpi3{grid-template-columns:repeat(2,1fr)}
-  .kpi-val{font-size:20px}
-  .kpi-card{padding:11px 12px}
+  .kpi-val{font-size:18px}
+  .kpi-lbl{font-size:9px}
+  .kpi-sub{font-size:10px}
+  .kpi-card{padding:10px 12px}
 
   .fg2,.fg3,.fg4{grid-template-columns:1fr}
   .brk-row{grid-template-columns:1fr 1fr;gap:6px}
   .brk-row > *:last-child{grid-column:span 2;justify-self:end}
 
-  /* setup wizard */
-  .setup-card{padding:24px 20px;width:94vw}
-  .splash-title{font-size:24px}
+  /* page header stacks */
+  .pg-hdr{flex-direction:column;gap:10px;margin-bottom:14px}
+  .pg-title{font-size:17px}
+  .pg-sub{font-size:11px}
+  .btn-row{gap:6px;margin-top:10px}
+  .btn{padding:7px 11px;font-size:12px}
+  .btn-lg{padding:10px 18px;font-size:13px}
+  .btn-sm{padding:4px 8px;font-size:10px}
 
-  /* gantt already scrolls via .gantt-wrap; tighten padding */
-  .gantt-inner{padding:14px}
+  /* inputs more touch-friendly */
+  input,select,textarea{padding:9px 10px;font-size:14px}
+  .field label{font-size:10px}
+
+  /* tables: shrink padding, allow horizontal scroll */
+  thead th,tbody td{padding:6px 7px;font-size:11px}
+  .tbl-wrap,.gantt-wrap{-webkit-overflow-scrolling:touch}
+
+  /* setup wizard */
+  .setup-card{padding:22px 18px;width:94vw;max-height:92vh;overflow-y:auto}
+  .setup-title{font-size:18px}
+  .setup-sub{font-size:12px;margin-bottom:18px}
+  .setup-step{font-size:12px;line-height:1.7}
+
+  /* splash */
+  .splash-logo{width:72px;height:72px;font-size:36px;margin-bottom:16px}
+  .splash-title{font-size:22px;text-align:center;padding:0 16px}
+  .splash-sub{font-size:12px;text-align:center;padding:0 18px;margin-bottom:28px}
+  .splash-pills{padding:0 12px;margin-bottom:28px;gap:6px}
+  .sp{font-size:11px;padding:4px 10px}
+  .splash-btn{padding:13px 38px;font-size:14px}
+  .splash-foot{font-size:10px;padding:0 16px;text-align:center}
+
+  /* modals */
+  .modal{padding:18px;border-radius:12px;max-height:90vh}
+  .modal-title{font-size:15px;margin-bottom:12px}
+
+  /* gantt */
+  .gantt-inner{padding:12px;min-width:1100px}
+  .g-lbl,.g-rlbl,.g-sec-lbl,.g-div-sp{width:130px}
+  .g-rlbl-m{font-size:11px}
+  .g-rlbl-s{font-size:9px}
+
+  /* lists */
+  .plan-row,.idle-ev{flex-wrap:wrap;gap:6px}
+  .legend{gap:10px;padding:10px 2px}
+  .leg-item{font-size:10px}
+  .alert{font-size:12px;padding:9px 12px}
+
+  /* toast */
+  .toast{left:12px;right:12px;bottom:12px;max-width:none;font-size:12px;padding:11px 14px}
 }
 @media (max-width:480px){
+  body{font-size:12px}
+  .topbar{padding:0 8px}
+  .tb-title{font-size:11px;max-width:38vw}
+  .tb-logo{display:none}
+  .tb-btn{padding:5px 7px;font-size:10px}
+  .main{padding:10px 8px}
+  .card{padding:11px}
   .kpi4,.kpi3{grid-template-columns:1fr}
-  .tb-title{font-size:11px;max-width:40vw}
-  .main{padding:10px}
+  .kpi-val{font-size:22px}
+  .pg-title{font-size:16px}
+  .btn-row .btn{flex:1 1 auto;justify-content:center}
+  .sidebar{width:84vw;max-width:280px}
+  .gantt-inner{min-width:900px}
+  .g-lbl,.g-rlbl,.g-sec-lbl,.g-div-sp{width:110px}
+  .splash-title{font-size:20px}
+  .splash-pills{display:none}
+  thead th,tbody td{padding:5px 6px;font-size:10px}
 }
 </style>
 </head>
@@ -414,7 +479,7 @@ tbody tr:hover td{background:var(--gray1)}
       </button>
       <div class="tb-logo">✂️</div>
       <div style="min-width:0">
-        <div class="tb-title">CW Cutting Department - Gantt Chart Planning System</div>
+        <div class="tb-title"><span class="tb-title-full">CW Cutting Department - Gantt Chart Planning System</span><span class="tb-title-short" style="display:none">CW Gantt Planner</span></div>
         <div class="tb-sub">Auto Spreader & Auto Cutter Scheduler</div>
       </div>
     </div>
