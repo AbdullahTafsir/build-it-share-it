@@ -940,8 +940,12 @@ function generateSchedule(laysIn, settings){
 
   for(const l of sorted){
     const spr=l.spreader;
+    const firstOnSpreader=spreaderReady[spr]==null;
     const spReadyTime=spreaderReady[spr]??shS;
-    const requestedStart=Math.max(toMin(l.spreadStart||settings.shiftStart), spReadyTime, shS);
+    // First lay on each spreader must start at shift start — no idle spreader at day-begin.
+    const requestedStart=firstOnSpreader
+      ? shS
+      : Math.max(toMin(l.spreadStart||settings.shiftStart), spReadyTime, shS);
     const sp=runUntil(requestedStart, l.spreadDur);
 
     // Assign to cutter that's free earliest
