@@ -990,6 +990,230 @@ function generateSchedule(laysIn, settings){
   };
 }
 
+// ─── SIMULATION ──────────────────────────────
+function _shuffle(a){ const b=a.slice(); for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } return b; }
+
+function _reprioritize(lays, order){
+  // order = array of lays in desired sequence; reassign priority 1..n
+  return order.map((l,i)=>({...l, priority:i+1}));
+}
+
+function _strategyOrderings(lays){
+  const base=lays.slice();
+  const byKey=(fn,desc=false)=>base.slice().sort((a,b)=> desc ? fn(b)-fn(a) : fn(a)-fn(b));
+  // Spreader round-robin: interleave per spreader group sorted by spreadDur asc
+  function rr(){
+    const groups={};
+    base.forEach(l=>{ (groups[l.spreader]=groups[l.spreader]||[]).push(l); });
+    Object.values(groups).forEach(g=>g.sort((a,b)=>a.spreadDur-b.spreadDur));
+    const out=[]; let added=true;
+    while(added){ added=false;
+      for(const k of Object.keys(groups)){ if(groups[k].length){ out.push(groups[k].shift()); added=true; } }
+    }
+    return out;
+  }
+  return [
+    {name:'As-entered', lays:base.slice().sort((a,b)=>a.priority-b.priority)},
+    {name:'Shortest spread first', lays:byKey(l=>+l.spreadDur||0)},
+    {name:'Longest spread first',  lays:byKey(l=>+l.spreadDur||0,true)},
+    {name:'Shortest cut first',    lays:byKey(l=>+l.cutDur||0)},
+    {name:'Longest cut first',     lays:byKey(l=>+l.cutDur||0,true)},
+    {name:'Largest total yards first', lays:byKey(l=>+l.totalYards||0,true)},
+    {name:'Balanced (spread+cut) asc', lays:byKey(l=>(+l.spreadDur||0)+(+l.cutDur||0))},
+    {name:'Spreader round-robin',  lays:rr()},
+  ];
+}
+
+function _computeUtilization(plan, settings){
+  const shS=toMin(settings.shiftStart), shE=toMin(settings.shiftEnd);
+  const breaks=(settings.breaks||[]).map(b=>({from:toMin(b.from),to:toMin(b.to)}));
+  const brkMin=breaks.reduce((a,b)=>a+(b.to-b.from),0);
+  const availPer=Math.max(1,(shE-shS)-brkMin);
+  // Spreader utilization: per unique spreader, sum spreadDur / availPer
+  const spreaders=[...new Set(plan.result.map(r=>r.spreader))];
+  const sprBusy={}; plan.result.forEach(r=>{ sprBusy[r.spreader]=(sprBusy[r.spreader]||0)+(+r.spreadDur||0); });
+  const sprUtil=spreaders.length
+    ? Math.round(spreaders.reduce((a,s)=>a+Math.min(100,(sprBusy[s]/availPer)*100),0)/spreaders.length)
+    : 0;
+  // Table utilization: a "table" is occupied from spreadStart until cutEnd of same lay.
+  // We approximate per-spreader table util as (sum (cutEnd - spreadStart)) / availPer
+  const tblBusy={}; plan.result.forEach(r=>{
+    const occ=Math.max(0,(r.cutEnd||0)-(r.spreadStartMin||0));
+    tblBusy[r.spreader]=(tblBusy[r.spreader]||0)+occ;
+  });
+  const tblUtil=spreaders.length
+    ? Math.round(spreaders.reduce((a,s)=>a+Math.min(100,(tblBusy[s]/availPer)*100),0)/spreaders.length)
+    : 0;
+  // Makespan
+  const makespan=plan.result.reduce((m,r)=>Math.max(m,r.cutEnd||0),shS)-shS;
+  return {sprUtil, tblUtil, makespan};
+}
+
+function _scoreCandidate(plan, settings, weights){
+  const s=plan.summary;
+  const extra=_computeUtilization(plan, settings);
+  const shS=toMin(settings.shiftStart), shE=toMin(settings.shiftEnd);
+  const shiftMin=Math.max(1,shE-shS);
+  const idleNorm=Math.min(1,(s.totalIdleTime||0)/(shiftMin*s.numCutters));
+  const overtime=plan.result.filter(r=>r.status==='OVERTIME').length;
+  const otNorm=Math.min(1, overtime/Math.max(1,plan.result.length));
+  const score=
+      weights.wCut*(s.utilization/100)
+    + weights.wSpr*(extra.sprUtil/100)
+    + weights.wTab*(extra.tblUtil/100)
+    - weights.wIdle*idleNorm
+    - weights.wOT*otNorm;
+  return {
+    score: Math.round(score*10000)/100, // %-ish
+    cutterUtil:s.utilization, spreaderUtil:extra.sprUtil, tableUtil:extra.tblUtil,
+    totalIdle:s.totalIdleTime, makespan:extra.makespan,
+    issues:plan.result.filter(r=>r.status!=='OK').length
+  };
+}
+
+function runSimulation(laysIn, settings, opts){
+  const weights={wCut:opts.wCut, wSpr:opts.wSpr, wTab:opts.wTab, wIdle:opts.wIdle, wOT:opts.wOT};
+  const strategies=_strategyOrderings(laysIn);
+  // Add randomized shuffles
+  for(let i=0;i<(opts.randN||0);i++){
+    strategies.push({name:`Random shuffle #${i+1}`, lays:_shuffle(laysIn)});
+  }
+  const candidates=strategies.map(st=>{
+    const ordered=_reprioritize(st.lays, st.lays);
+    const sch=generateSchedule(ordered, settings);
+    const plan={
+      name:`SIM — ${st.name}`,
+      summary:sch.summary, result:sch.result, idleWindows:sch.idleWindows,
+      inputLays:ordered, settings
+    };
+    const metrics=_scoreCandidate(plan, settings, weights);
+    return {name:st.name, plan, metrics};
+  });
+  candidates.sort((a,b)=>b.metrics.score-a.metrics.score);
+  return {candidates, best:candidates[0]};
+}
+
+let _simState=null;
+
+function runSimulationFromUI(){
+  const laysArr=readLays();
+  if(!laysArr.length){ toast('Add at least one lay first!','error'); return; }
+  const settings={
+    shiftStart:document.getElementById('shiftStart').value,
+    shiftEnd:document.getElementById('shiftEnd').value,
+    numCutters:+document.getElementById('numCutters').value,
+    breaks:breaksList
+  };
+  const opts={
+    randN:Math.max(0,Math.min(500,+document.getElementById('simRandN').value||0)),
+    wCut:+document.getElementById('simWCut').value||0,
+    wSpr:+document.getElementById('simWSpr').value||0,
+    wTab:+document.getElementById('simWTab').value||0,
+    wIdle:+document.getElementById('simWIdle').value||0,
+    wOT:+document.getElementById('simWOT').value||0,
+  };
+  const t0=performance.now();
+  const sim=runSimulation(laysArr, settings, opts);
+  const ms=Math.round(performance.now()-t0);
+  _simState={sim, settings};
+  document.getElementById('simStatus').innerHTML=
+    `✅ Ran <strong>${sim.candidates.length}</strong> candidates in <strong>${ms} ms</strong>. Best: <strong>${sim.best.name}</strong> (score ${sim.best.metrics.score})`;
+  renderSimLeaderboard();
+  selectSimCandidate(0);
+  document.getElementById('simApplyBtn').style.display='';
+  document.getElementById('simCsvBtn').style.display='';
+}
+
+function renderSimLeaderboard(){
+  if(!_simState) return;
+  const tb=document.getElementById('simLeaderboard');
+  tb.innerHTML=_simState.sim.candidates.map((c,i)=>`
+    <tr style="cursor:pointer;${i===0?'background:#e6fbe9':''}" onclick="selectSimCandidate(${i})">
+      <td>${i+1}</td><td>${c.name}</td>
+      <td><strong>${c.metrics.score}</strong></td>
+      <td>${c.metrics.cutterUtil}%</td>
+      <td>${c.metrics.spreaderUtil}%</td>
+      <td>${c.metrics.tableUtil}%</td>
+      <td>${durStr(c.metrics.totalIdle)}</td>
+      <td>${durStr(c.metrics.makespan)}</td>
+      <td>${c.metrics.issues}</td>
+    </tr>`).join('');
+  document.getElementById('simLeaderboardCard').style.display='';
+}
+
+function selectSimCandidate(idx){
+  if(!_simState) return;
+  const c=_simState.sim.candidates[idx]; if(!c) return;
+  const plan=c.plan, m=c.metrics;
+  document.getElementById('simPreviewWrap').style.display='';
+  document.getElementById('simSelName').textContent=c.name;
+  // KPI strip
+  document.getElementById('simKpi').innerHTML=`
+    <div class="kpi-card kc-blue"><div class="kpi-val">${m.cutterUtil}%</div><div class="kpi-lbl">Cutter utilization</div></div>
+    <div class="kpi-card kc-green"><div class="kpi-val">${m.spreaderUtil}%</div><div class="kpi-lbl">Spreader utilization</div></div>
+    <div class="kpi-card kc-orange"><div class="kpi-val">${m.tableUtil}%</div><div class="kpi-lbl">Table utilization</div></div>
+    <div class="kpi-card kc-purple"><div class="kpi-val">${durStr(m.totalIdle)}</div><div class="kpi-lbl">Total idle</div></div>`;
+  // Reuse main Gantt renderer by temporarily swapping target
+  const ganttHost=document.getElementById('ganttOuter');
+  const simGanttHost=document.getElementById('simGantt');
+  const savedHtml=ganttHost.innerHTML;
+  // Render into main host then move to sim host
+  renderGantt(plan);
+  simGanttHost.innerHTML=ganttHost.innerHTML;
+  ganttHost.innerHTML=savedHtml;
+  // Compact sim schedule table
+  document.getElementById('simSchedBody').innerHTML=plan.result.map(r=>`
+    <tr>
+      <td>${r.priority}</td><td>${r.layNo}</td><td>${r.style}</td><td>${r.cutNo||'—'}</td>
+      <td>${r.plies}</td><td>${r.totalYards||0}</td>
+      <td>${r.spreader}</td><td>${r.spreadStartTime}</td><td>${r.spreadEndTime}</td>
+      <td>${r.cutterNum}</td><td>${r.cutStartTime}</td><td>${r.cutEndTime}</td>
+      <td>${r.idleDur>0?durStr(r.idleDur):'—'}</td>
+      <td><span class="badge ${r.status==='OK'?'bd-ok':r.status==='GAP'?'bd-warn':'bd-err'}">${r.status}</span></td>
+    </tr>`).join('');
+  // Reuse dashboard/idle renderers via host swap
+  const dashHost=document.getElementById('dashContent');
+  const idleHost=document.getElementById('idleContent');
+  const sDash=document.getElementById('simDash'); const sIdle=document.getElementById('simIdle');
+  if(dashHost){ const saved=dashHost.innerHTML; renderDashboard(plan); sDash.innerHTML=dashHost.innerHTML; dashHost.innerHTML=saved; }
+  if(idleHost){ const saved=idleHost.innerHTML; renderIdleTracker(plan); sIdle.innerHTML=idleHost.innerHTML; idleHost.innerHTML=saved; }
+  // Highlight selected row
+  const rows=document.querySelectorAll('#simLeaderboard tr');
+  rows.forEach((r,i)=>{ r.style.background = i===idx ? '#dbeafe' : (i===0?'#e6fbe9':''); });
+}
+
+function applySimulationBest(){
+  if(!_simState) return;
+  const best=_simState.sim.best.plan;
+  currentPlan={
+    id:'sim-'+Date.now(), name:best.name,
+    planDate:document.getElementById('planDate').value||today(),
+    settings:_simState.settings, inputLays:best.inputLays,
+    result:best.result, idleWindows:best.idleWindows, summary:best.summary,
+    savedToSupabase:false
+  };
+  renderKpi(currentPlan.summary);
+  renderGantt(currentPlan);
+  renderSchedule(currentPlan);
+  renderDashboard(currentPlan);
+  renderIdleTracker(currentPlan);
+  document.getElementById('ganttSub').textContent=
+    `${currentPlan.name} · ${currentPlan.summary.totalLays} lays · ${currentPlan.summary.utilization}% util · ⚠ Not yet saved`;
+  toast('✅ Best simulated plan applied. Click "Generate & Save" on Input page to persist.');
+  switchPanel('gantt');
+}
+
+function exportSimulationCSV(){
+  if(!_simState) return;
+  const rows=[['Rank','Strategy','Score','CutterUtil%','SpreaderUtil%','TableUtil%','TotalIdleMin','MakespanMin','Issues']];
+  _simState.sim.candidates.forEach((c,i)=>{
+    rows.push([i+1,c.name,c.metrics.score,c.metrics.cutterUtil,c.metrics.spreaderUtil,c.metrics.tableUtil,c.metrics.totalIdle,c.metrics.makespan,c.metrics.issues]);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=`simulation-${today()}.csv`; a.click();
+}
+
 // ─── DB MAPPERS ──────────────────────────────
 const layToDb = (l,d) => ({
   plan_date:l.planDate||d, priority:l.priority, session:l.session, lay_no:l.layNo,
