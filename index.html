@@ -1448,7 +1448,10 @@ function renderSchedule(plan){
     return`<tr>
       <td><strong>${l.priority}</strong></td>
       <td><code style="background:var(--gray1);padding:2px 6px;border-radius:4px">${l.layNo}</code></td>
-      <td>${l.style}</td><td>${l.buyer}</td><td>${l.color}</td><td>${(l.plies||0).toLocaleString()}</td>
+      <td>${l.style}</td><td>${l.buyer}</td><td>${l.color}</td>
+      <td>${l.cutNo||'—'}</td><td>${l.markerLength?l.markerLength.toFixed(2):'—'}</td>
+      <td>${(l.plies||0).toLocaleString()}</td><td>${l.ratio||'—'}</td>
+      <td>${l.totalYards?l.totalYards.toFixed(2):'—'}</td>
       <td><span class="badge b-blue">SP-${l.spreader}</span></td>
       <td class="mono">${l.spreadStartTime}</td><td class="mono">${l.spreadEndTime}</td><td>${l.spreadDur}m</td>
       <td><span class="badge b-orange">CUT-${l.cutterNum}</span></td>
