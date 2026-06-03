@@ -570,7 +570,7 @@ tbody tr:hover td{background:var(--gray1)}
             <table class="itbl">
               <thead><tr>
                 <th>Priority</th><th>Session</th><th>Lay no.</th><th>Style</th>
-                <th>Buyer</th><th>Color</th><th>Plies</th><th>Spreader</th>
+                <th>Buyer</th><th>Color</th><th>Cut no.</th><th>Marker length</th><th>Plies</th><th>Spreader</th>
                 <th>Spread start</th><th>Spread dur (min)</th><th>Cut dur (min)</th><th></th>
               </tr></thead>
               <tbody id="layBody"></tbody>
@@ -1261,6 +1261,8 @@ function addLayRow(d){
     <td><input type="text" list="styleDatalist" value="${d.style||''}" placeholder="DP2772" style="width:72px" id="style-${id}" onchange="autoFill(${id})"></td>
     <td><input type="text" value="${d.buyer||''}" placeholder="UA" style="width:55px" id="buyer-${id}"></td>
     <td><input type="text" value="${d.color||''}" placeholder="NAVY" style="width:78px" id="color-${id}"></td>
+    <td><input type="text" value="${d.cutNo||''}" placeholder="C-01" style="width:65px" id="cutNo-${id}"></td>
+    <td><input type="number" step="0.01" value="${d.markerLength||''}" placeholder="0.00" style="width:75px" id="ml-${id}"></td>
     <td><input type="number" value="${d.plies||0}" min="0" style="width:52px" id="plies-${id}"></td>
     <td><select id="spr-${id}" style="width:55px">${sprOpts}</select></td>
     <td><input type="time" value="${d.spreadStart||'07:00'}" id="ss-${id}"></td>
@@ -1287,7 +1289,10 @@ function readLays(){
       priority:+document.getElementById('pri-'+id).value, session:document.getElementById('sess-'+id).value,
       layNo:document.getElementById('layNo-'+id).value||'LAY-'+id,
       style:document.getElementById('style-'+id).value||'—', buyer:document.getElementById('buyer-'+id).value||'—',
-      color:document.getElementById('color-'+id).value||'—', plies:+document.getElementById('plies-'+id).value,
+      color:document.getElementById('color-'+id).value||'—',
+      cutNo:document.getElementById('cutNo-'+id).value||'',
+      markerLength:parseFloat(document.getElementById('ml-'+id).value)||0,
+      plies:+document.getElementById('plies-'+id).value,
       spreader:+document.getElementById('spr-'+id).value, spreadStart:document.getElementById('ss-'+id).value,
       spreadDur:sd, cutDur:+document.getElementById('cd-'+id).value,
       planDate:document.getElementById('planDate').value
