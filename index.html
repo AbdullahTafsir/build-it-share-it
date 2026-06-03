@@ -624,7 +624,77 @@ tbody tr:hover td{background:var(--gray1)}
               <tr><td colspan="21" style="text-align:center;padding:32px;color:var(--gray4)">Generate a plan to see the schedule.</td></tr>
             </tbody>
           </table>
+      </div>
+
+      <!-- SIMULATION -->
+      <div class="panel" id="panel-simulation">
+        <div class="pg-hdr">
+          <div><div class="pg-title">Simulation</div>
+          <div class="pg-sub">Auto-test multiple scheduling strategies to find the plan with maximum utilization &amp; minimum idle time</div></div>
+          <div class="btn-row" style="margin:0">
+            <button class="btn btn-primary" onclick="runSimulationFromUI()">▶ Run simulation</button>
+            <button class="btn btn-success" id="simApplyBtn" style="display:none" onclick="applySimulationBest()">✓ Apply best as active plan</button>
+            <button class="btn btn-warn btn-sm" id="simCsvBtn" style="display:none" onclick="exportSimulationCSV()">⬇ Export comparison CSV</button>
+          </div>
         </div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Simulation settings</div></div>
+          <div class="form-grid fg4">
+            <div class="field"><label>Random shuffles</label><input type="number" id="simRandN" value="50" min="0" max="500"></div>
+            <div class="field"><label>Cutter util weight</label><input type="number" id="simWCut" value="0.35" step="0.05" min="0" max="1"></div>
+            <div class="field"><label>Spreader util weight</label><input type="number" id="simWSpr" value="0.25" step="0.05" min="0" max="1"></div>
+            <div class="field"><label>Table util weight</label><input type="number" id="simWTab" value="0.20" step="0.05" min="0" max="1"></div>
+          </div>
+          <div class="form-grid fg4" style="margin-top:8px">
+            <div class="field"><label>Idle penalty weight</label><input type="number" id="simWIdle" value="0.15" step="0.05" min="0" max="1"></div>
+            <div class="field"><label>Overtime penalty weight</label><input type="number" id="simWOT" value="0.05" step="0.05" min="0" max="1"></div>
+          </div>
+          <div id="simStatus" style="margin-top:10px;font-size:12px;color:var(--gray4)">Click "Run simulation" to test strategies against your current input table.</div>
+        </div>
+
+        <div class="card" id="simLeaderboardCard" style="display:none">
+          <div class="card-hdr"><div class="card-title">Leaderboard — click any row to preview</div></div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Strategy</th><th>Score</th><th>Cutter util</th><th>Spreader util</th><th>Table util</th>
+                <th>Total idle</th><th>Makespan</th><th>Issues</th>
+              </tr></thead>
+              <tbody id="simLeaderboard"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="simPreviewWrap" style="display:none">
+          <div class="kpi-grid kpi4" id="simKpi"></div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">Simulated Gantt — <span id="simSelName"></span></div></div>
+            <div class="gantt-wrap"><div class="gantt-inner" id="simGantt"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">Simulated schedule table</div></div>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr>
+                  <th>Pri</th><th>Lay no.</th><th>Style</th><th>Cut no.</th><th>Plies</th><th>Total yds</th>
+                  <th>Spreader</th><th>Spread start</th><th>Spread end</th>
+                  <th>Cutter</th><th>Cut start</th><th>Cut end</th>
+                  <th>Idle</th><th>Status</th>
+                </tr></thead>
+                <tbody id="simSchedBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">Simulated dashboard</div></div>
+            <div id="simDash"></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">Simulated idle tracker</div></div>
+            <div id="simIdle"></div>
+          </div>
+        </div>
+      </div>
         <div id="schedFooter" style="margin-top:10px;font-size:12px;color:var(--gray4)"></div>
       </div>
 
