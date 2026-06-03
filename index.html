@@ -908,6 +908,8 @@ function generateSchedule(laysIn, settings){
     summary:{
       shiftStart:settings.shiftStart, shiftEnd:settings.shiftEnd, numCutters:nC,
       totalLays:result.length, totalPlies:result.reduce((a,r)=>a+(+r.plies||0),0),
+      totalMarkerLength:result.reduce((a,r)=>a+(+r.markerLength||0),0),
+      totalYards:result.reduce((a,r)=>a+(+r.totalYards||0),0),
       totalCuttingTime, totalIdleTime, utilization, issues,
       cutTimePerCutter, idlePerCutter
     }
