@@ -1278,6 +1278,11 @@ function autoFill(rowId){
   const sm=stylesMaster.find(s=>s.code===document.getElementById('style-'+rowId).value);
   if(sm){ document.getElementById('buyer-'+rowId).value=sm.buyer; document.getElementById('cd-'+rowId).value=sm.defaultCutDur; }
 }
+function calcYards(rowId){
+  const ml=parseFloat(document.getElementById('ml-'+rowId).value)||0;
+  const pl=parseFloat(document.getElementById('plies-'+rowId).value)||0;
+  document.getElementById('ty-'+rowId).value=(ml*pl).toFixed(2);
+}
 function removeLayRow(id){ document.getElementById('row-'+id)?.remove(); lays=lays.filter(l=>l.id!==id); }
 function clearLays(){
   if(!lays.length)return;
