@@ -71,48 +71,60 @@ export type Database = {
           color: string | null
           created_at: string
           cut_dur: number | null
+          cut_no: string | null
           id: string
           lay_no: string | null
+          marker_length: number | null
           plan_date: string
           plies: number | null
           priority: number | null
+          ratio: string | null
           session: string | null
           spread_dur: number | null
           spread_start: string | null
           spreader: number | null
           style: string | null
+          total_yards: number | null
         }
         Insert: {
           buyer?: string | null
           color?: string | null
           created_at?: string
           cut_dur?: number | null
+          cut_no?: string | null
           id?: string
           lay_no?: string | null
+          marker_length?: number | null
           plan_date: string
           plies?: number | null
           priority?: number | null
+          ratio?: string | null
           session?: string | null
           spread_dur?: number | null
           spread_start?: string | null
           spreader?: number | null
           style?: string | null
+          total_yards?: number | null
         }
         Update: {
           buyer?: string | null
           color?: string | null
           created_at?: string
           cut_dur?: number | null
+          cut_no?: string | null
           id?: string
           lay_no?: string | null
+          marker_length?: number | null
           plan_date?: string
           plies?: number | null
           priority?: number | null
+          ratio?: string | null
           session?: string | null
           spread_dur?: number | null
           spread_start?: string | null
           spreader?: number | null
           style?: string | null
+          total_yards?: number | null
         }
         Relationships: []
       }
