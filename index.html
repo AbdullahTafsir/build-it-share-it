@@ -1661,7 +1661,11 @@ async function exportReport(format){
     const statusColor=l.status&&l.status.toLowerCase().includes('ok')?'#2E7D32':(l.idleDur>30?'#B71C1C':'#854F0B');
     rows+=`<tr>
       <td>${l.priority}</td><td><b>${l.layNo}</b></td><td>${l.style||''}</td><td>${l.buyer||''}</td>
-      <td>${l.color||''}</td><td style="text-align:right">${l.plies||0}</td>
+      <td>${l.color||''}</td><td>${l.cutNo||''}</td>
+      <td style="text-align:right">${l.markerLength?l.markerLength.toFixed(2):''}</td>
+      <td style="text-align:right">${l.plies||0}</td>
+      <td>${l.ratio||''}</td>
+      <td style="text-align:right">${l.totalYards?l.totalYards.toFixed(2):''}</td>
       <td>SPR-${l.spreader}</td><td>${l.spreadStartTime}</td><td>${l.spreadEndTime}</td><td style="text-align:right">${l.spreadDur}m</td>
       <td>CUT-${l.cutterNum}</td><td>${l.cutStartTime}</td><td>${l.cutEndTime}</td><td style="text-align:right">${l.cutDur}m</td>
       <td style="text-align:right;color:${l.idleDur>30?'#B71C1C':'#4A5568'}">${l.idleDur||0}m</td>
