@@ -940,7 +940,6 @@ function generateSchedule(laysIn, settings){
     const spReadyTime=spreaderReady[spr]??shS;
     const requestedStart=Math.max(toMin(l.spreadStart||settings.shiftStart), spReadyTime, shS);
     const sp=runUntil(requestedStart, l.spreadDur);
-    spreaderReady[spr]=sp.end;
 
     // Assign to cutter that's free earliest
     let cIdx=0; for(let i=1;i<nC;i++){ if(cutterReady[i]<cutterReady[cIdx]) cIdx=i; }
@@ -948,6 +947,10 @@ function generateSchedule(laysIn, settings){
     const ct=runUntil(cutEarliest, l.cutDur);
     const idleDur=Math.max(0, cutEarliest - cutterReady[cIdx]);
     const tableGap=Math.max(0, cutEarliest - sp.end);
+
+    // Spreader table stays occupied with this lay until its cutting actually starts.
+    // Next lay on the same spreader cannot begin spreading before then.
+    spreaderReady[spr]=ct.start;
 
     if(idleDur>2){
       idleWindows[cIdx].push({from:cutterReady[cIdx],to:cutEarliest,dur:idleDur,layNo:l.layNo});
