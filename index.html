@@ -610,13 +610,14 @@ tbody tr:hover td{background:var(--gray1)}
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th>Pri</th><th>Lay no.</th><th>Style</th><th>Buyer</th><th>Color</th><th>Plies</th>
+              <th>Pri</th><th>Lay no.</th><th>Style</th><th>Buyer</th><th>Color</th>
+              <th>Cut no.</th><th>Marker len</th><th>Plies</th><th>Ratio</th><th>Total yds</th>
               <th>Spreader</th><th>Spread start</th><th>Spread end</th><th>Spr dur</th>
               <th>Cutter</th><th>Cut start</th><th>Cut end</th><th>Cut dur</th>
               <th>Cutter idle</th><th>Table wait</th><th>Status</th>
             </tr></thead>
             <tbody id="schedBody">
-              <tr><td colspan="17" style="text-align:center;padding:32px;color:var(--gray4)">Generate a plan to see the schedule.</td></tr>
+              <tr><td colspan="21" style="text-align:center;padding:32px;color:var(--gray4)">Generate a plan to see the schedule.</td></tr>
             </tbody>
           </table>
         </div>
@@ -917,12 +918,14 @@ function generateSchedule(laysIn, settings){
 const layToDb = (l,d) => ({
   plan_date:l.planDate||d, priority:l.priority, session:l.session, lay_no:l.layNo,
   style:l.style, buyer:l.buyer, color:l.color, plies:l.plies, spreader:l.spreader,
-  spread_start:l.spreadStart, spread_dur:l.spreadDur, cut_dur:l.cutDur
+  spread_start:l.spreadStart, spread_dur:l.spreadDur, cut_dur:l.cutDur,
+  cut_no:l.cutNo||null, marker_length:l.markerLength||null, ratio:l.ratio||null, total_yards:l.totalYards||null
 });
 const layFromDb = r => ({
   id:r.id, planDate:r.plan_date, priority:r.priority, session:r.session, layNo:r.lay_no,
   style:r.style, buyer:r.buyer, color:r.color, plies:r.plies, spreader:r.spreader,
-  spreadStart:r.spread_start, spreadDur:r.spread_dur, cutDur:r.cut_dur
+  spreadStart:r.spread_start, spreadDur:r.spread_dur, cutDur:r.cut_dur,
+  cutNo:r.cut_no||'', markerLength:r.marker_length||0, ratio:r.ratio||'', totalYards:r.total_yards||0
 });
 
 // ─── API ROUTER (Supabase-backed) ────────────
@@ -1447,7 +1450,10 @@ function renderSchedule(plan){
     return`<tr>
       <td><strong>${l.priority}</strong></td>
       <td><code style="background:var(--gray1);padding:2px 6px;border-radius:4px">${l.layNo}</code></td>
-      <td>${l.style}</td><td>${l.buyer}</td><td>${l.color}</td><td>${(l.plies||0).toLocaleString()}</td>
+      <td>${l.style}</td><td>${l.buyer}</td><td>${l.color}</td>
+      <td>${l.cutNo||'—'}</td><td>${l.markerLength?l.markerLength.toFixed(2):'—'}</td>
+      <td>${(l.plies||0).toLocaleString()}</td><td>${l.ratio||'—'}</td>
+      <td>${l.totalYards?l.totalYards.toFixed(2):'—'}</td>
       <td><span class="badge b-blue">SP-${l.spreader}</span></td>
       <td class="mono">${l.spreadStartTime}</td><td class="mono">${l.spreadEndTime}</td><td>${l.spreadDur}m</td>
       <td><span class="badge b-orange">CUT-${l.cutterNum}</span></td>
@@ -1657,7 +1663,11 @@ async function exportReport(format){
     const statusColor=l.status&&l.status.toLowerCase().includes('ok')?'#2E7D32':(l.idleDur>30?'#B71C1C':'#854F0B');
     rows+=`<tr>
       <td>${l.priority}</td><td><b>${l.layNo}</b></td><td>${l.style||''}</td><td>${l.buyer||''}</td>
-      <td>${l.color||''}</td><td style="text-align:right">${l.plies||0}</td>
+      <td>${l.color||''}</td><td>${l.cutNo||''}</td>
+      <td style="text-align:right">${l.markerLength?l.markerLength.toFixed(2):''}</td>
+      <td style="text-align:right">${l.plies||0}</td>
+      <td>${l.ratio||''}</td>
+      <td style="text-align:right">${l.totalYards?l.totalYards.toFixed(2):''}</td>
       <td>SPR-${l.spreader}</td><td>${l.spreadStartTime}</td><td>${l.spreadEndTime}</td><td style="text-align:right">${l.spreadDur}m</td>
       <td>CUT-${l.cutterNum}</td><td>${l.cutStartTime}</td><td>${l.cutEndTime}</td><td style="text-align:right">${l.cutDur}m</td>
       <td style="text-align:right;color:${l.idleDur>30?'#B71C1C':'#4A5568'}">${l.idleDur||0}m</td>
@@ -1697,7 +1707,11 @@ async function exportReport(format){
     <table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #ECEEF2;border-radius:8px;overflow:hidden">
       <thead><tr style="background:#0C3F73;color:#fff;text-align:left">
         <th style="padding:8px">#</th><th style="padding:8px">Lay No</th><th style="padding:8px">Style</th><th style="padding:8px">Buyer</th>
-        <th style="padding:8px">Color</th><th style="padding:8px;text-align:right">Plies</th>
+        <th style="padding:8px">Color</th><th style="padding:8px">Cut No</th>
+        <th style="padding:8px;text-align:right">Marker Len</th>
+        <th style="padding:8px;text-align:right">Plies</th>
+        <th style="padding:8px">Ratio</th>
+        <th style="padding:8px;text-align:right">Total Yds</th>
         <th style="padding:8px">Spreader</th><th style="padding:8px">Spread Start</th><th style="padding:8px">Spread End</th><th style="padding:8px;text-align:right">Dur</th>
         <th style="padding:8px">Cutter</th><th style="padding:8px">Cut Start</th><th style="padding:8px">Cut End</th><th style="padding:8px;text-align:right">Dur</th>
         <th style="padding:8px;text-align:right">Cutter Idle</th><th style="padding:8px;text-align:right">Table Wait</th><th style="padding:8px">Status</th>
@@ -1768,8 +1782,8 @@ async function exportReport(format){
 // ─── CSV EXPORT ───────────────────────────────
 function exportCSV(){
   if(!currentPlan){ toast('Generate a plan first!','error'); return; }
-  let csv='Priority,Session,Lay No,Style,Buyer,Color,Plies,Spreader,Spread Start,Spread End,Spread Dur,Cutter,Cut Start,Cut End,Cut Dur,Cutter Idle (min),Table Wait (min),Status\n';
-  currentPlan.result.forEach(l=>{csv+=`${l.priority},"${l.session}","${l.layNo}","${l.style}","${l.buyer}","${l.color}",${l.plies||0},${l.spreader},${l.spreadStartTime},${l.spreadEndTime},${l.spreadDur},${l.cutterNum},${l.cutStartTime},${l.cutEndTime},${l.cutDur},${l.idleDur},${l.tableGap},${l.status}\n`;});
+  let csv='Priority,Session,Lay No,Style,Buyer,Color,Cut No,Marker Length,Plies,Ratio,Total Yards,Spreader,Spread Start,Spread End,Spread Dur,Cutter,Cut Start,Cut End,Cut Dur,Cutter Idle (min),Table Wait (min),Status\n';
+  currentPlan.result.forEach(l=>{csv+=`${l.priority},"${l.session}","${l.layNo}","${l.style}","${l.buyer}","${l.color}","${l.cutNo||''}",${l.markerLength||0},${l.plies||0},"${l.ratio||''}",${l.totalYards||0},${l.spreader},${l.spreadStartTime},${l.spreadEndTime},${l.spreadDur},${l.cutterNum},${l.cutStartTime},${l.cutEndTime},${l.cutDur},${l.idleDur},${l.tableGap},${l.status}\n`;});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='Cutting_Gantt_'+currentPlan.planDate+'.csv'; a.click();
