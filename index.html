@@ -918,12 +918,14 @@ function generateSchedule(laysIn, settings){
 const layToDb = (l,d) => ({
   plan_date:l.planDate||d, priority:l.priority, session:l.session, lay_no:l.layNo,
   style:l.style, buyer:l.buyer, color:l.color, plies:l.plies, spreader:l.spreader,
-  spread_start:l.spreadStart, spread_dur:l.spreadDur, cut_dur:l.cutDur
+  spread_start:l.spreadStart, spread_dur:l.spreadDur, cut_dur:l.cutDur,
+  cut_no:l.cutNo||null, marker_length:l.markerLength||null, ratio:l.ratio||null, total_yards:l.totalYards||null
 });
 const layFromDb = r => ({
   id:r.id, planDate:r.plan_date, priority:r.priority, session:r.session, layNo:r.lay_no,
   style:r.style, buyer:r.buyer, color:r.color, plies:r.plies, spreader:r.spreader,
-  spreadStart:r.spread_start, spreadDur:r.spread_dur, cutDur:r.cut_dur
+  spreadStart:r.spread_start, spreadDur:r.spread_dur, cutDur:r.cut_dur,
+  cutNo:r.cut_no||'', markerLength:r.marker_length||0, ratio:r.ratio||'', totalYards:r.total_yards||0
 });
 
 // ─── API ROUTER (Supabase-backed) ────────────
