@@ -1261,6 +1261,8 @@ function addLayRow(d){
     <td><input type="text" list="styleDatalist" value="${d.style||''}" placeholder="DP2772" style="width:72px" id="style-${id}" onchange="autoFill(${id})"></td>
     <td><input type="text" value="${d.buyer||''}" placeholder="UA" style="width:55px" id="buyer-${id}"></td>
     <td><input type="text" value="${d.color||''}" placeholder="NAVY" style="width:78px" id="color-${id}"></td>
+    <td><input type="text" value="${d.cutNo||''}" placeholder="C-01" style="width:65px" id="cutNo-${id}"></td>
+    <td><input type="number" step="0.01" value="${d.markerLength||''}" placeholder="0.00" style="width:75px" id="ml-${id}"></td>
     <td><input type="number" value="${d.plies||0}" min="0" style="width:52px" id="plies-${id}"></td>
     <td><select id="spr-${id}" style="width:55px">${sprOpts}</select></td>
     <td><input type="time" value="${d.spreadStart||'07:00'}" id="ss-${id}"></td>
