@@ -1496,7 +1496,7 @@ function renderDashboard(plan){
       <div class="kpi-card kc-orange"><div class="kpi-val">${(s.totalYards||0).toFixed(2)}</div><div class="kpi-lbl">Total yards</div></div>
       <div class="kpi-card kc-${ots.length?'red':'green'}"><div class="kpi-val">${ots.length}</div><div class="kpi-lbl">Overtime lays</div></div>
     </div>
-    ${worst?`<div class="alert al-info">💡 <strong>Longest idle:</strong> ${Math.round(worst.dur)} min (${toTime(worst.from)} → ${toTime(worst.to)}) — lay <strong>${worst.layNo}</strong>. Move a lay with spread ≤ ${Math.round(worst.dur)} min earlier.</div>`:`<div class="alert al-success">✅ Both cutters fully utilized — zero idle time!</div>`}
+    ${worst?`<div class="alert al-info">⏱ <strong>Biggest gap: a cutter sat idle for ${durStr(worst.dur)}</strong> (${toTime(worst.from)} → ${toTime(worst.to)}).<br>It was waiting for lay <strong>${worst.layNo}</strong> to finish spreading.<br><strong>Fix:</strong> schedule another lay that spreads in under ${durStr(worst.dur)} before this one, so the cutter has work during the gap.</div>`:`<div class="alert al-success">✅ Both cutters fully utilized — zero idle time!</div>`}
     ${ots.length?`<div class="alert al-warn">⚠ <strong>${ots.length} overtime:</strong> ${ots.map(l=>l.layNo+' ends '+l.cutEndTime).join(', ')}</div>`:''}
     <div class="card"><div class="card-title" style="margin-bottom:12px">Utilization breakdown</div>${utilHtml}</div>
     <div class="card"><div class="card-title" style="margin-bottom:12px">Planning priority rules</div>
