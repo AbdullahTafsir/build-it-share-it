@@ -951,9 +951,10 @@ function generateSchedule(laysIn, settings){
     const idleDur=Math.max(0, cutEarliest - cutterReady[cIdx]);
     const tableGap=Math.max(0, cutEarliest - sp.end);
 
-    // Spreader table stays occupied with this lay until its cutting actually starts.
-    // Next lay on the same spreader cannot begin spreading before then.
-    spreaderReady[spr]=ct.start;
+    // Spreader table stays occupied until previous lay's cutting has started
+    // AND at least 60% of its cutting duration has elapsed. Only then can the
+    // next lay on the same spreader begin spreading.
+    spreaderReady[spr]=ct.start + Math.ceil((l.cutDur||0)*0.6);
 
     if(idleDur>2){
       idleWindows[cIdx].push({from:cutterReady[cIdx],to:cutEarliest,dur:idleDur,layNo:l.layNo});
