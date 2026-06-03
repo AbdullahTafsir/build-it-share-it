@@ -570,7 +570,7 @@ tbody tr:hover td{background:var(--gray1)}
             <table class="itbl">
               <thead><tr>
                 <th>Priority</th><th>Session</th><th>Lay no.</th><th>Style</th>
-                <th>Buyer</th><th>Color</th><th>Cut no.</th><th>Marker length</th><th>Plies</th><th>Spreader</th>
+                <th>Buyer</th><th>Color</th><th>Cut no.</th><th>Marker length</th><th>Plies</th><th>Ratio</th><th>Total yards</th><th>Spreader</th>
                 <th>Spread start</th><th>Spread dur (min)</th><th>Cut dur (min)</th><th></th>
               </tr></thead>
               <tbody id="layBody"></tbody>
@@ -1262,8 +1262,10 @@ function addLayRow(d){
     <td><input type="text" value="${d.buyer||''}" placeholder="UA" style="width:55px" id="buyer-${id}"></td>
     <td><input type="text" value="${d.color||''}" placeholder="NAVY" style="width:78px" id="color-${id}"></td>
     <td><input type="text" value="${d.cutNo||''}" placeholder="C-01" style="width:65px" id="cutNo-${id}"></td>
-    <td><input type="number" step="0.01" value="${d.markerLength||''}" placeholder="0.00" style="width:75px" id="ml-${id}"></td>
-    <td><input type="number" value="${d.plies||0}" min="0" style="width:52px" id="plies-${id}"></td>
+    <td><input type="number" step="0.01" value="${d.markerLength||''}" placeholder="0.00" style="width:75px" id="ml-${id}" oninput="calcYards(${id})"></td>
+    <td><input type="number" value="${d.plies||0}" min="0" style="width:52px" id="plies-${id}" oninput="calcYards(${id})"></td>
+    <td><input type="text" value="${d.ratio||''}" placeholder="1:1:1" style="width:70px" id="ratio-${id}"></td>
+    <td><input type="number" step="0.01" value="${d.totalYards||0}" readonly style="width:80px;background:var(--gray1)" id="ty-${id}"></td>
     <td><select id="spr-${id}" style="width:55px">${sprOpts}</select></td>
     <td><input type="time" value="${d.spreadStart||'07:00'}" id="ss-${id}"></td>
     <td><input type="number" value="${d.spreadDur||30}" min="1" style="width:55px" id="sd-${id}"></td>
@@ -1275,6 +1277,11 @@ function addLayRow(d){
 function autoFill(rowId){
   const sm=stylesMaster.find(s=>s.code===document.getElementById('style-'+rowId).value);
   if(sm){ document.getElementById('buyer-'+rowId).value=sm.buyer; document.getElementById('cd-'+rowId).value=sm.defaultCutDur; }
+}
+function calcYards(rowId){
+  const ml=parseFloat(document.getElementById('ml-'+rowId).value)||0;
+  const pl=parseFloat(document.getElementById('plies-'+rowId).value)||0;
+  document.getElementById('ty-'+rowId).value=(ml*pl).toFixed(2);
 }
 function removeLayRow(id){ document.getElementById('row-'+id)?.remove(); lays=lays.filter(l=>l.id!==id); }
 function clearLays(){
@@ -1293,6 +1300,8 @@ function readLays(){
       cutNo:document.getElementById('cutNo-'+id).value||'',
       markerLength:parseFloat(document.getElementById('ml-'+id).value)||0,
       plies:+document.getElementById('plies-'+id).value,
+      ratio:document.getElementById('ratio-'+id).value||'',
+      totalYards:parseFloat(document.getElementById('ty-'+id).value)||0,
       spreader:+document.getElementById('spr-'+id).value, spreadStart:document.getElementById('ss-'+id).value,
       spreadDur:sd, cutDur:+document.getElementById('cd-'+id).value,
       planDate:document.getElementById('planDate').value
