@@ -1046,11 +1046,13 @@ function _computeUtilization(plan, settings){
   const sprUtil=spreaders.length
     ? Math.round(spreaders.reduce((a,s)=>a+Math.min(100,(sprBusy[s]/availPer)*100),0)/spreaders.length)
     : 0;
-  // Table utilization: a "table" is occupied from spreadStart until cutEnd of same lay.
-  // We approximate per-spreader table util as (sum (cutEnd - spreadStart)) / availPer
+  // Table utilization: table is "productively busy" only during spread + cut,
+  // excluding the wait gap between spreadEnd and cutStart.
+  //   tableBusy = (spreadEnd - spreadStart) + (cutEnd - cutStart)
   const tblBusy={}; plan.result.forEach(r=>{
-    const occ=Math.max(0,(r.cutEnd||0)-(r.spreadStartMin||0));
-    tblBusy[r.spreader]=(tblBusy[r.spreader]||0)+occ;
+    const spread=Math.max(0,(r.spreadEndMin||0)-(r.spreadStartMin||0));
+    const cut=Math.max(0,(r.cutEnd||0)-(r.cutStart||0));
+    tblBusy[r.spreader]=(tblBusy[r.spreader]||0)+spread+cut;
   });
   const tblUtil=spreaders.length
     ? Math.round(spreaders.reduce((a,s)=>a+Math.min(100,(tblBusy[s]/availPer)*100),0)/spreaders.length)
