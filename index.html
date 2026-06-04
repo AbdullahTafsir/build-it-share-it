@@ -1990,7 +1990,7 @@ async function loadAnalytics(){
     const data=await api('GET','/api/analytics/summary?days=30');
     document.getElementById('analyticsKpi').innerHTML=`
       <div class="kpi-card kc-blue"><div class="kpi-val">${data.totalPlans}</div><div class="kpi-lbl">Total plans</div><div class="kpi-sub">${data.recentPlans} in last 30 days</div></div>
-      <div class="kpi-card kc-green"><div class="kpi-val">${data.avgUtilization}%</div><div class="kpi-lbl">Avg utilization (30d)</div><div class="kpi-sub">${data.totalLays} total lays</div></div>
+      <div class="kpi-card kc-green"><div class="kpi-val">${data.avgUtilization}%</div><div class="kpi-lbl">Average cutter utilization (30d)</div><div class="kpi-sub">${data.totalLays} total lays</div></div>
       <div class="kpi-card kc-purple"><div class="kpi-val">${(data.totalPlies||0).toLocaleString()}</div><div class="kpi-lbl">Total plies (30d)</div></div>`;
     document.getElementById('analyticsTable').innerHTML=data.plansOverTime?.length
       ?`<div class="card-title" style="margin-bottom:12px">Plan history</div>
