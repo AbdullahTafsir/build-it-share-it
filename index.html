@@ -1241,26 +1241,39 @@ function selectSimCandidate(idx){
   rows.forEach((r,i)=>{ r.style.background = i===idx ? '#dbeafe' : (i===0?'#e6fbe9':''); });
 }
 
-function applySimulationBest(){
+async function applySimulationBest(){
   if(!_simState) return;
   const best=_simState.sim.best.plan;
-  currentPlan={
-    id:'sim-'+Date.now(), name:best.name,
-    planDate:document.getElementById('planDate').value||today(),
-    settings:_simState.settings, inputLays:best.inputLays,
-    result:best.result, idleWindows:best.idleWindows, summary:best.summary,
-    savedToSupabase:false
-  };
-  renderKpi(currentPlan.summary);
-  renderGantt(currentPlan);
-  renderSchedule(currentPlan);
-  renderDashboard(currentPlan);
-  renderIdleTracker(currentPlan);
-  document.getElementById('ganttSub').textContent=
-    `${currentPlan.name} · ${currentPlan.summary.totalLays} lays · ${currentPlan.summary.utilization}% util · ⚠ Not yet saved`;
-  toast('✅ Best simulated plan applied. Click "Generate & Save" on Input page to persist.');
-  switchPanel('gantt');
+  const planDate=document.getElementById('planDate').value||today();
+  const planName=`Plan ${planDate} — ${best.inputLays.length} lays (sim: ${best.name})`;
+  // Re-prioritize lays in the simulated best order so the saved plan reproduces it
+  const reordered=best.inputLays.map((l,i)=>({...l, priority:i+1}));
+  document.getElementById('topStatus').textContent='⟳ Saving best plan...';
+  try{
+    await api('PUT','/api/settings',{
+      shiftStart:document.getElementById('shiftStart').value,
+      shiftEnd:document.getElementById('shiftEnd').value,
+      numCutters:+document.getElementById('numCutters').value,
+      breaks:breaksList
+    });
+    const resp=await api('POST','/api/schedule/generate',{lays:reordered,planDate,planName});
+    currentPlan=resp.plan;
+    // Reflect new priority order in the input table
+    lays=reordered.map(l=>({...l, id:l.id||(++rowId)}));
+    if(typeof renderLays==='function') renderLays();
+    renderKpi(currentPlan.summary);
+    renderGantt(currentPlan);
+    renderSchedule(currentPlan);
+    renderDashboard(currentPlan);
+    renderIdleTracker(currentPlan);
+    document.getElementById('ganttSub').textContent=
+      `${currentPlan.name} · ${currentPlan.summary.totalLays} lays · ${currentPlan.summary.utilization}% util · ✅ Saved`;
+    document.getElementById('topStatus').textContent=`${reordered.length} lays · ${currentPlan.summary.utilization}% util`;
+    toast('✅ Best simulated plan applied & saved to Supabase!');
+    switchPanel('gantt');
+  }catch(e){ toast('Error saving plan: '+e.message,'error'); document.getElementById('topStatus').textContent='Error'; }
 }
+
 
 function exportSimulationCSV(){
   if(!_simState) return;
