@@ -645,7 +645,7 @@ tbody tr:hover td{background:var(--gray1)}
             <button class="btn btn-warn btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
           </div>
         </div>
-        <div class="kpi-grid kpi4" id="ganttKpi"></div>
+        <div class="kpi-grid kpi6" id="ganttKpi"></div>
         <div class="gantt-wrap">
           <div class="gantt-inner" id="ganttOuter">
             <div class="loading"><div class="spin"></div>Generate a plan to see the Gantt chart</div>
@@ -1744,6 +1744,8 @@ function renderKpi(s){
     <div class="kpi-card kc-blue"><div class="kpi-val">${s.utilization}%</div><div class="kpi-lbl">Cutter utilization</div><div class="kpi-sub">${durStr(s.totalCuttingTime)} cutting</div></div>
     <div class="kpi-card kc-purple"><div class="kpi-val">${durStr(s.totalIdleTime)}</div><div class="kpi-lbl">Total idle time</div><div class="kpi-sub">${(s.idlePerCutter||[]).length} cutters</div></div>
     <div class="kpi-card kc-green"><div class="kpi-val">${s.totalLays}</div><div class="kpi-lbl">Lays scheduled</div><div class="kpi-sub">${(s.totalPlies||0).toLocaleString()} plies</div></div>
+    <div class="kpi-card kc-orange"><div class="kpi-val">${(s.totalMarkerLength||0).toFixed(2)}</div><div class="kpi-lbl">Total marker length</div><div class="kpi-sub">yards</div></div>
+    <div class="kpi-card kc-orange"><div class="kpi-val">${(s.totalYards||0).toFixed(2)}</div><div class="kpi-lbl">Total yards</div><div class="kpi-sub">all lays</div></div>
     <div class="kpi-card kc-${s.issues?'red':'green'}"><div class="kpi-val">${s.issues}</div><div class="kpi-lbl">Issues</div><div class="kpi-sub">${s.issues?'Check schedule':'All OK ✅'}</div></div>`;
 }
 
