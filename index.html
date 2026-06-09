@@ -1825,6 +1825,7 @@ function renderGantt(plan){
     <div class="leg-item"><div class="leg-sw g-ct"></div>Cutting</div>
     <div class="leg-item"><div class="leg-sw g-id"></div>Idle</div>
     <div class="leg-item"><div class="leg-sw g-brk"></div>Break</div>
+    ${axisEnd>shE?`<div class="leg-item"><div class="leg-sw" style="background:repeating-linear-gradient(135deg,rgba(239,68,68,.2),rgba(239,68,68,.2) 4px,rgba(239,68,68,.4) 4px,rgba(239,68,68,.4) 8px)"></div>Overtime (past ${s.shiftEnd}, +${Math.round(maxEnd-shE)}m)</div>`:''}
   </div>`;
   document.getElementById('ganttOuter').innerHTML=h;
 }
