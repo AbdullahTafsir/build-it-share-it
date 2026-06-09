@@ -1775,7 +1775,13 @@ function renderGantt(plan){
   h+=`</div></div>`;
   // grid lines for tracks
   let grid=`<div class="g-grid">`;
-  ticks.forEach(m=>{ if(m===shS||m===shE) return;
+  ticks.forEach(m=>{ if(m===shS||m===axisEnd) return;
+    grid+=`<div class="g-grid-ln${m%60===0?' major':''}${m>shE?' overtime':''}" style="left:${pct(m)}"></div>`;
+  });
+  // shaded overtime region past shift end
+  if(axisEnd>shE){
+    grid=grid.replace('</div>',`<div class="g-overtime" style="left:${pct(shE)};width:${wid(axisEnd-shE)}" title="Overtime past ${s.shiftEnd}"></div></div>`);
+  }
     grid+=`<div class="g-grid-ln${m%60===0?' major':''}" style="left:${pct(m)}"></div>`;
   });
   grid+=`</div>`;
