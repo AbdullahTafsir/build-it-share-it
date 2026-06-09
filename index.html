@@ -1782,8 +1782,6 @@ function renderGantt(plan){
   if(axisEnd>shE){
     grid=grid.replace('</div>',`<div class="g-overtime" style="left:${pct(shE)};width:${wid(axisEnd-shE)}" title="Overtime past ${s.shiftEnd}"></div></div>`);
   }
-    grid+=`<div class="g-grid-ln${m%60===0?' major':''}" style="left:${pct(m)}"></div>`;
-  });
   grid+=`</div>`;
   // Split [from,to] into visible segments around breaks
   const segs=(from,to)=>{
