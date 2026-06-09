@@ -251,6 +251,8 @@ tbody tr:hover td{background:var(--gray1)}
 .g-grid{position:absolute;inset:0;pointer-events:none}
 .g-grid-ln{position:absolute;top:0;bottom:0;width:1px;background:var(--gray2)}
 .g-grid-ln.major{background:var(--gray3)}
+.g-grid-ln.overtime{background:#fecaca}
+.g-overtime{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,rgba(239,68,68,.08),rgba(239,68,68,.08) 8px,rgba(239,68,68,.16) 8px,rgba(239,68,68,.16) 16px);pointer-events:none;z-index:0}
 .g-bar{position:absolute;top:2px;height:22px;display:flex;align-items:center;justify-content:center;padding:0 6px;
   font-size:10px;font-weight:700;overflow:hidden;white-space:nowrap;border-radius:3px;
   box-shadow:0 1px 2px rgba(0,0,0,.1);text-overflow:ellipsis;cursor:default;transition:transform .12s,box-shadow .12s}
@@ -1752,10 +1754,19 @@ function renderKpi(s){
 // ─── RENDER GANTT ─────────────────────────────
 function renderGantt(plan){
   const s=plan.summary, breaks=plan.settings.breaks||[];
-  const shS=toMin(s.shiftStart),shE=toMin(s.shiftEnd),shL=shE-shS;
+  const shS=toMin(s.shiftStart),shE=toMin(s.shiftEnd);
+  // Extend axis past shift end if any activity runs into overtime
+  let maxEnd=shE;
+  plan.result.forEach(l=>{
+    const sEnd=(l.spreadEndMin!=null)?l.spreadEndMin:(l.spreadStartMin+l.spreadDur);
+    if(sEnd>maxEnd) maxEnd=sEnd;
+    if(l.cutEnd>maxEnd) maxEnd=l.cutEnd;
+  });
+  const axisEnd=Math.ceil(maxEnd/30)*30;
+  const shL=axisEnd-shS;
   const pct=m=>((m-shS)/shL*100).toFixed(3)+'%', wid=m=>(m/shL*100).toFixed(3)+'%';
   // 30-min ticks
-  const ticks=[]; for(let m=shS;m<=shE;m+=30) ticks.push(m);
+  const ticks=[]; for(let m=shS;m<=axisEnd;m+=30) ticks.push(m);
   // header with major (hour) + minor (30m) marks
   let h=`<div class="g-hdr"><div class="g-lbl">Machine / Table</div><div class="g-tr">`;
   ticks.forEach(m=>{
@@ -1766,9 +1777,13 @@ function renderGantt(plan){
   h+=`</div></div>`;
   // grid lines for tracks
   let grid=`<div class="g-grid">`;
-  ticks.forEach(m=>{ if(m===shS||m===shE) return;
-    grid+=`<div class="g-grid-ln${m%60===0?' major':''}" style="left:${pct(m)}"></div>`;
+  ticks.forEach(m=>{ if(m===shS||m===axisEnd) return;
+    grid+=`<div class="g-grid-ln${m%60===0?' major':''}${m>shE?' overtime':''}" style="left:${pct(m)}"></div>`;
   });
+  // shaded overtime region past shift end
+  if(axisEnd>shE){
+    grid=grid.replace('</div>',`<div class="g-overtime" style="left:${pct(shE)};width:${wid(axisEnd-shE)}" title="Overtime past ${s.shiftEnd}"></div></div>`);
+  }
   grid+=`</div>`;
   // Split [from,to] into visible segments around breaks
   const segs=(from,to)=>{
@@ -1810,6 +1825,7 @@ function renderGantt(plan){
     <div class="leg-item"><div class="leg-sw g-ct"></div>Cutting</div>
     <div class="leg-item"><div class="leg-sw g-id"></div>Idle</div>
     <div class="leg-item"><div class="leg-sw g-brk"></div>Break</div>
+    ${axisEnd>shE?`<div class="leg-item"><div class="leg-sw" style="background:repeating-linear-gradient(135deg,rgba(239,68,68,.2),rgba(239,68,68,.2) 4px,rgba(239,68,68,.4) 4px,rgba(239,68,68,.4) 8px)"></div>Overtime (past ${s.shiftEnd}, +${Math.round(maxEnd-shE)}m)</div>`:''}
   </div>`;
   document.getElementById('ganttOuter').innerHTML=h;
 }
