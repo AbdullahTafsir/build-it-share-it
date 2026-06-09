@@ -1752,10 +1752,19 @@ function renderKpi(s){
 // ─── RENDER GANTT ─────────────────────────────
 function renderGantt(plan){
   const s=plan.summary, breaks=plan.settings.breaks||[];
-  const shS=toMin(s.shiftStart),shE=toMin(s.shiftEnd),shL=shE-shS;
+  const shS=toMin(s.shiftStart),shE=toMin(s.shiftEnd);
+  // Extend axis past shift end if any activity runs into overtime
+  let maxEnd=shE;
+  plan.result.forEach(l=>{
+    const sEnd=(l.spreadEndMin!=null)?l.spreadEndMin:(l.spreadStartMin+l.spreadDur);
+    if(sEnd>maxEnd) maxEnd=sEnd;
+    if(l.cutEnd>maxEnd) maxEnd=l.cutEnd;
+  });
+  const axisEnd=Math.ceil(maxEnd/30)*30;
+  const shL=axisEnd-shS;
   const pct=m=>((m-shS)/shL*100).toFixed(3)+'%', wid=m=>(m/shL*100).toFixed(3)+'%';
   // 30-min ticks
-  const ticks=[]; for(let m=shS;m<=shE;m+=30) ticks.push(m);
+  const ticks=[]; for(let m=shS;m<=axisEnd;m+=30) ticks.push(m);
   // header with major (hour) + minor (30m) marks
   let h=`<div class="g-hdr"><div class="g-lbl">Machine / Table</div><div class="g-tr">`;
   ticks.forEach(m=>{
