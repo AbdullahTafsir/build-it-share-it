@@ -1850,14 +1850,20 @@ function renderGantt(plan){
     return out;
   };
   h+=`<div class="g-sec"><div class="g-sec-lbl">Spreader tables</div><div class="g-sec-ln"></div></div>`;
-  [...new Set(plan.result.map(l=>l.spreader))].sort((a,b)=>a-b).forEach(sp=>{
+  const tableSet=new Set([1,2,3,4,5, ...plan.result.map(l=>l.spreader)]);
+  [...tableSet].sort((a,b)=>a-b).forEach(sp=>{
     h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">SPREADER-${sp}</div><div class="g-rlbl-s">Table ${sp}</div></div><div class="g-track" data-spr="${sp}">${grid}`;
     breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name} (${b.from}–${b.to})"></div>`;});
     plan.result.filter(l=>l.spreader===sp).forEach(l=>{
       const end=(l.spreadEndMin!=null)?l.spreadEndMin:(l.spreadStartMin+l.spreadDur);
+      const cls=l.status==='BLOCKED'?'g-sp g-bl':'g-sp';
       segs(l.spreadStartMin,end).forEach(([a,b])=>{
-        h+=`<div class="g-bar g-sp" style="left:${pct(a)};width:${wid(b-a)}" title="${l.layNo} · ${l.style} · ${l.color} · ${l.plies}pl · ${l.spreadDur}min">${l.layNo}</div>`;
+        h+=`<div class="g-bar ${cls}" style="left:${pct(a)};width:${wid(b-a)}" title="${l.layNo} · ${l.style} · ${l.color} · ${l.plies}pl · ${l.spreadDur}min${l.status==='BLOCKED'?' · BLOCKED ('+l.tableWait+'m wait)':''}">${l.layNo}</div>`;
       });
+      // visualise wait between spread end and cut start
+      if(l.tableWait>2 && l.cutStart>end){
+        h+=`<div class="g-bar ${l.status==='BLOCKED'?'g-bl':'g-id'}" style="left:${pct(end)};width:${wid(l.cutStart-end)};opacity:.55" title="Wait ${l.tableWait}m">${l.tableWait>=20?'WAIT '+l.tableWait+'m':''}</div>`;
+      }
     });
     h+=`</div></div>`;
   });
@@ -1874,12 +1880,26 @@ function renderGantt(plan){
     });
     h+=`</div></div>`;
   }
+  // Manual-cut row (only if any manual lays exist)
+  const manualLays=plan.result.filter(l=>l.cutterNum==='M');
+  if(manualLays.length){
+    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">MANUAL</div><div class="g-rlbl-s">Hand cut</div></div><div class="g-track">${grid}`;
+    breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name} (${b.from}–${b.to})"></div>`;});
+    manualLays.forEach(l=>{
+      segs(l.cutStart,l.cutEnd).forEach(([a,b])=>{
+        h+=`<div class="g-bar g-mn" style="left:${pct(a)};width:${wid(b-a)}" title="${l.layNo} · MANUAL cut · ${l.cutDur}min">${l.layNo}</div>`;
+      });
+    });
+    h+=`</div></div>`;
+  }
 
   // legend
   h+=`<div class="legend">
     <div class="leg-item"><div class="leg-sw g-sp"></div>Spreading</div>
     <div class="leg-item"><div class="leg-sw g-ct"></div>Cutting</div>
-    <div class="leg-item"><div class="leg-sw g-id"></div>Idle</div>
+    <div class="leg-item"><div class="leg-sw g-id"></div>Idle / wait</div>
+    <div class="leg-item"><div class="leg-sw g-bl"></div>Blocked (&gt;30m wait)</div>
+    <div class="leg-item"><div class="leg-sw g-mn"></div>Manual cut</div>
     <div class="leg-item"><div class="leg-sw g-brk"></div>Break</div>
     ${axisEnd>shE?`<div class="leg-item"><div class="leg-sw" style="background:repeating-linear-gradient(135deg,rgba(239,68,68,.2),rgba(239,68,68,.2) 4px,rgba(239,68,68,.4) 4px,rgba(239,68,68,.4) 8px)"></div>Overtime (past ${s.shiftEnd}, +${Math.round(maxEnd-shE)}m)</div>`:''}
   </div>`;
