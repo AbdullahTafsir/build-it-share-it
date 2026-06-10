@@ -1908,9 +1908,19 @@ function showCutPreview(layNo, spr, startMin, dur){
 // ─── RENDER SCHEDULE ──────────────────────────
 function renderSchedule(plan){
   document.getElementById('schedBody').innerHTML=plan.result.map(l=>{
-    const badge=l.status==='OK'?'b-ok':l.status==='OVERTIME'?'b-ot':'b-gap';
+    const badgeCls=l.status==='OK'?'b-ok'
+      :l.status==='OVERTIME'?'b-ot'
+      :l.status==='BLOCKED'?'b-blocked'
+      :l.status==='MANUAL'?'b-manual'
+      :'b-gap';
     const idB=l.idleDur>2?`<span class="badge b-idle">${l.idleDur}m</span>`:'—';
-    const gpB=l.tableGap>2?`<span class="badge b-gap">${l.tableGap}m</span>`:'—';
+    const waitB=(l.tableWait||l.tableGap||0)>2?`<span class="badge ${l.status==='BLOCKED'?'b-blocked':'b-gap'}">${l.tableWait||l.tableGap}m</span>`:'—';
+    const moved=(l.requestedSpreader&&l.requestedSpreader!==l.spreader)
+      ?`<span class="move-note">moved from SPR-${l.requestedSpreader}</span>`:'';
+    const cutLbl=l.cutterNum==='M'?`<span class="badge b-manual">MANUAL</span>`
+      :`<span class="badge b-orange">CUT-${l.cutterNum}</span>`;
+    const manualBtn=(l.status==='BLOCKED')
+      ?`<button class="btn-mini" onclick="switchToManualCut('${(l.layNo||'').replace(/'/g,"\\'")}')">→ Manual Cut</button>`:'';
     return`<tr>
       <td><strong>${l.priority}</strong></td>
       <td><code style="background:var(--gray1);padding:2px 6px;border-radius:4px">${l.layNo}</code></td>
@@ -1918,17 +1928,40 @@ function renderSchedule(plan){
       <td>${l.cutNo||'—'}</td><td>${l.markerLength?l.markerLength.toFixed(2):'—'}</td>
       <td>${(l.plies||0).toLocaleString()}</td><td>${l.ratio||'—'}</td>
       <td>${l.totalYards?l.totalYards.toFixed(2):'—'}</td>
-      <td><span class="badge b-blue">SP-${l.spreader}</span></td>
+      <td><span class="badge b-blue">SP-${l.spreader}</span>${moved}</td>
       <td class="mono">${l.spreadStartTime}</td><td class="mono">${l.spreadEndTime}</td><td>${l.spreadDur}m</td>
-      <td><span class="badge b-orange">CUT-${l.cutterNum}</span></td>
+      <td>${cutLbl}</td>
       <td class="mono">${l.cutStartTime}</td><td class="mono">${l.cutEndTime}</td><td>${l.cutDur}m</td>
-      <td>${idB}</td><td>${gpB}</td><td><span class="badge ${badge}">${l.status}</span></td>
+      <td>${idB}</td><td>${waitB}</td>
+      <td><span class="badge ${badgeCls}">${l.status}</span>${manualBtn}</td>
     </tr>`;
   }).join('');
   const s=plan.summary;
+  const blockedTxt=s.blocked?` · <span style="color:var(--red);font-weight:700">${s.blocked} BLOCKED</span>`:'';
   document.getElementById('schedFooter').innerHTML=
-    `<strong>${s.totalLays}</strong> lays · <strong>${(s.totalPlies||0).toLocaleString()}</strong> plies · Util: <strong>${s.utilization}%</strong> · Idle: <strong>${durStr(s.totalIdleTime)}</strong>`;
+    `<strong>${s.totalLays}</strong> lays · <strong>${(s.totalPlies||0).toLocaleString()}</strong> plies · Util: <strong>${s.utilization}%</strong> · Idle: <strong>${durStr(s.totalIdleTime)}</strong>${blockedTxt}`;
 }
+
+// Switch a BLOCKED lay to manual cutting and re-run the scheduler locally.
+window.switchToManualCut=function(layNo){
+  if(!currentPlan) return;
+  const settings={...currentPlan.settings};
+  settings.manualLays=[...new Set([...(settings.manualLays||[]), layNo])];
+  const lays=currentPlan.inputLays||currentPlan.result.map(r=>({
+    priority:r.priority, session:r.session, layNo:r.layNo, style:r.style, buyer:r.buyer,
+    color:r.color, cutNo:r.cutNo, markerLength:r.markerLength, plies:r.plies, ratio:r.ratio,
+    totalYards:r.totalYards, spreader:r.requestedSpreader||r.spreader,
+    spreadStart:r.spreadStart, spreadDur:r.spreadDur, cutDur:r.cutDur
+  }));
+  const sch=generateSchedule(lays, settings);
+  currentPlan={...currentPlan, settings, result:sch.result, idleWindows:sch.idleWindows, summary:sch.summary};
+  renderKpi(currentPlan.summary);
+  renderGantt(currentPlan);
+  renderSchedule(currentPlan);
+  renderDashboard(currentPlan);
+  renderIdleTracker(currentPlan);
+  toast(`Lay ${layNo} switched to MANUAL cut`);
+};
 
 // ─── RENDER DASHBOARD ─────────────────────────
 function renderDashboard(plan){
