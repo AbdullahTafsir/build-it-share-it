@@ -2215,7 +2215,8 @@ async function exportReport(format){
   // Build summary table rows
   let rows='';
   (plan.result||[]).forEach(l=>{
-    const statusColor=l.status&&l.status.toLowerCase().includes('ok')?'#2E7D32':(l.idleDur>30?'#B71C1C':'#854F0B');
+    const wait=l.tableWait??l.tableGap??0;
+    const statusColor=l.status==='OK'?'#2E7D32':(l.status==='BLOCKED'?'#B71C1C':'#854F0B');
     rows+=`<tr>
       <td>${l.priority}</td><td><b>${l.layNo}</b></td><td>${l.style||''}</td><td>${l.buyer||''}</td>
       <td>${l.color||''}</td><td>${l.cutNo||''}</td>
@@ -2226,7 +2227,7 @@ async function exportReport(format){
       <td>SPR-${l.spreader}</td><td>${l.spreadStartTime}</td><td>${l.spreadEndTime}</td><td style="text-align:right">${l.spreadDur}m</td>
       <td>CUT-${l.cutterNum}</td><td>${l.cutStartTime}</td><td>${l.cutEndTime}</td><td style="text-align:right">${l.cutDur}m</td>
       <td style="text-align:right;color:${l.idleDur>30?'#B71C1C':'#4A5568'}">${l.idleDur||0}m</td>
-      <td style="text-align:right;color:${l.tableGap>30?'#854F0B':'#4A5568'}">${l.tableGap||0}m</td>
+      <td style="text-align:right;color:${wait>30?'#B71C1C':'#4A5568'}">${wait||0}m</td>
       <td style="color:${statusColor};font-weight:600">${l.status||'OK'}</td>
     </tr>`;
   });
@@ -2338,7 +2339,7 @@ async function exportReport(format){
 function exportCSV(){
   if(!currentPlan){ toast('Generate a plan first!','error'); return; }
   let csv='Priority,Session,Lay No,Style,Buyer,Color,Cut No,Marker Length,Plies,Ratio,Total Yards,Spreader,Spread Start,Spread End,Spread Dur,Cutter,Cut Start,Cut End,Cut Dur,Cutter Idle (min),Table Wait (min),Status\n';
-  currentPlan.result.forEach(l=>{csv+=`${l.priority},"${l.session}","${l.layNo}","${l.style}","${l.buyer}","${l.color}","${l.cutNo||''}",${l.markerLength||0},${l.plies||0},"${l.ratio||''}",${l.totalYards||0},${l.spreader},${l.spreadStartTime},${l.spreadEndTime},${l.spreadDur},${l.cutterNum},${l.cutStartTime},${l.cutEndTime},${l.cutDur},${l.idleDur},${l.tableGap},${l.status}\n`;});
+  currentPlan.result.forEach(l=>{csv+=`${l.priority},"${l.session}","${l.layNo}","${l.style}","${l.buyer}","${l.color}","${l.cutNo||''}",${l.markerLength||0},${l.plies||0},"${l.ratio||''}",${l.totalYards||0},${l.spreader},${l.spreadStartTime},${l.spreadEndTime},${l.spreadDur},${l.cutterNum},${l.cutStartTime},${l.cutEndTime},${l.cutDur},${l.idleDur},${l.tableWait??l.tableGap??0},${l.status}\n`;});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='Cutting_Gantt_'+currentPlan.planDate+'.csv'; a.click();
