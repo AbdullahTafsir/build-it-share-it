@@ -1348,7 +1348,7 @@ async function applySimulationBest(){
       breaks:breaksList
     });
     const resp=await api('POST','/api/schedule/generate',{lays:reordered,planDate,planName});
-    currentPlan=resp.plan;
+    currentPlan=normalizePlan(resp.plan);
     // Reflect new priority order in the input table
     lays=reordered.map(l=>({...l, id:l.id||(++rowId)}));
     if(typeof renderLays==='function') renderLays();
@@ -1792,7 +1792,7 @@ async function generatePlan(){
     const planName=`Plan ${planDate} — ${laysArr.length} lays`;
     // Generate + auto-save plan + auto-save lays → all goes to Supabase in one call
     const resp=await api('POST','/api/schedule/generate',{lays:laysArr,planDate,planName});
-    currentPlan=resp.plan;
+    currentPlan=normalizePlan(resp.plan);
     renderKpi(currentPlan.summary);
     renderGantt(currentPlan);
     renderSchedule(currentPlan);
@@ -2106,16 +2106,16 @@ async function loadPlans(){
 async function loadPlan(id){
   try{
     const plan=await api('GET','/api/plans/'+id);
-    currentPlan=plan;
-    document.getElementById('shiftStart').value=plan.settings.shiftStart;
-    document.getElementById('shiftEnd').value=plan.settings.shiftEnd;
-    document.getElementById('numCutters').value=plan.settings.numCutters;
-    breaksList=plan.settings.breaks||[]; renderBreaks();
+    currentPlan=rebuildPlanWithCurrentScheduler(plan);
+    document.getElementById('shiftStart').value=currentPlan.settings.shiftStart;
+    document.getElementById('shiftEnd').value=currentPlan.settings.shiftEnd;
+    document.getElementById('numCutters').value=currentPlan.settings.numCutters;
+    breaksList=currentPlan.settings.breaks||[]; renderBreaks();
     document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
-    (plan.inputLays||[]).forEach(l=>addLayRow(l));
-    renderKpi(plan.summary); renderGantt(plan); renderSchedule(plan); renderDashboard(plan); renderIdleTracker(plan);
-    document.getElementById('ganttSub').textContent=plan.name+' (loaded from Supabase)';
-    document.getElementById('topStatus').textContent=plan.summary.totalLays+' lays · '+plan.summary.utilization+'% util';
+    (currentPlan.inputLays||[]).forEach(l=>addLayRow(l));
+    renderKpi(currentPlan.summary); renderGantt(currentPlan); renderSchedule(currentPlan); renderDashboard(currentPlan); renderIdleTracker(currentPlan);
+    document.getElementById('ganttSub').textContent=currentPlan.name+' (loaded with current scheduler rules)';
+    document.getElementById('topStatus').textContent=currentPlan.summary.totalLays+' lays · '+currentPlan.summary.utilization+'% util';
     switchPanel('gantt');
     toast('Loaded: '+plan.name);
   }catch(e){ toast('Error: '+e.message,'error'); }
