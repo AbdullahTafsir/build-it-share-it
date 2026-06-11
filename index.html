@@ -982,8 +982,10 @@ function generateSchedule(laysIn, settings){
     return {start,end};
   }
   // Plan a spread on `table` so its end aligns to `targetEnd` if possible.
-  function planSpread(tableReadyVal, targetEnd, dur){
-    let start=Math.max(shS, tableReadyVal);
+  // earliestUser = typed spreadStart honored as a lower bound (never starts before what the user typed)
+  function planSpread(tableReadyVal, targetEnd, dur, earliestUser){
+    const floor=Math.max(shS, tableReadyVal, earliestUser||0);
+    let start=floor;
     let sp=runUntil(start, dur);
     for(let i=0;i<4;i++){
       if(sp.end < targetEnd){
