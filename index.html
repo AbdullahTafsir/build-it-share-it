@@ -1951,7 +1951,7 @@ function renderGantt(plan){
     (plan.idleWindows[c]||[]).forEach(w=>{h+=`<div class="g-bar g-id" style="left:${pct(w.from)};width:${wid(w.to-w.from)}" title="IDLE ${Math.round(w.dur)}min">${w.dur>=20?'IDLE '+Math.round(w.dur)+'m':''}</div>`;});
     plan.result.filter(l=>l.cutterNum===c+1).sort((a,b)=>a.cutStart-b.cutStart).forEach(l=>{
       segs(l.cutStart,l.cutEnd).forEach(([a,b])=>{
-        h+=`<div class="g-bar g-ct" style="left:${pct(a)};width:${wid(b-a)}" title="${l.layNo} · ${l.cutDur}min · ${l.status} (click to preview on spreader row)" onclick="showCutPreview('${l.layNo}',${l.spreader},${l.spreadStartMin+l.spreadDur},${l.cutDur})">${l.layNo}</div>`;
+        h+=`<div class="g-bar g-ct" style="left:${pct(a)};width:${wid(b-a)}" title="${l.layNo} · ${l.cutDur}min · ${l.status} (click to preview on spreader row)" onclick="showCutPreview('${l.layNo}',${l.spreader},${l.cutStart},${l.cutEnd-l.cutStart})">${l.layNo}</div>`;
       });
     });
     h+=`</div></div>`;
