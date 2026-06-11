@@ -1102,6 +1102,42 @@ function generateSchedule(laysIn, settings){
   };
 }
 
+// Normalize older saved/generated plans so the UI always follows the current rule:
+// table wait > 30 minutes = BLOCKED + manual-cut suggestion.
+function normalizePlan(plan){
+  if(!plan) return plan;
+  const settings=plan.settings||{};
+  const shiftEnd=settings.shiftEnd?toMin(settings.shiftEnd):null;
+  const manualSet=new Set((settings.manualLays||[]).map(String));
+  const result=(plan.result||[]).map(l=>{
+    const spreadEnd=(l.spreadEndMin!=null)?l.spreadEndMin:((l.spreadStartMin!=null)?l.spreadStartMin+(+l.spreadDur||0):null);
+    const derivedWait=(l.cutStart!=null&&spreadEnd!=null)?Math.max(0,l.cutStart-spreadEnd):0;
+    const wait=Math.round(Math.max(0, +(l.tableWait??l.tableGap??derivedWait)||0));
+    const isManual=l.isManual||l.cutterNum==='M'||manualSet.has(String(l.layNo));
+    let status=l.status||'OK';
+    if(isManual) status='MANUAL';
+    else if(wait>30) status='BLOCKED';
+    else if(shiftEnd!=null&&l.cutEnd>shiftEnd) status='OVERTIME';
+    else if(wait>5) status='GAP';
+    else status='OK';
+    return {...l, tableWait:wait, tableGap:wait, status, isManual};
+  });
+  const summary={...(plan.summary||{})};
+  summary.totalLays=result.length;
+  summary.totalPlies=result.reduce((a,r)=>a+(+r.plies||0),0);
+  summary.issues=result.filter(r=>r.status!=='OK').length;
+  summary.blocked=result.filter(r=>r.status==='BLOCKED').length;
+  return {...plan, result, summary};
+}
+
+function rebuildPlanWithCurrentScheduler(plan){
+  if(plan?.inputLays?.length&&plan.settings){
+    const sch=generateSchedule(plan.inputLays, plan.settings);
+    return normalizePlan({...plan, result:sch.result, idleWindows:sch.idleWindows, summary:sch.summary});
+  }
+  return normalizePlan(plan);
+}
+
 // ─── SIMULATION ──────────────────────────────
 function _shuffle(a){ const b=a.slice(); for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } return b; }
 
