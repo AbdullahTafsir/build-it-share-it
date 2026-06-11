@@ -1068,7 +1068,10 @@ function generateSchedule(laysIn, settings){
     let best=null;
     for(let t=1;t<=NUM_TABLES;t++){
       for(let c=0;c<nC;c++){
-        const sp=planSpread(tableReady[t], cutterReady[c], l.spreadDur, userStart);
+        // Rule: at shift start every spreader should be working; allow at most 30 min idle if unavoidable.
+        const firstOnTable=tableReady[t]<=shS;
+        const cap=firstOnTable?shS+30:null;
+        const sp=planSpread(tableReady[t], cutterReady[c], l.spreadDur, userStart, cap);
         const cutEarliest=Math.max(cutterReady[c], sp.end);
         const ct=runUntil(cutEarliest, l.cutDur);
         const wait=Math.max(0, ct.start - sp.end);
