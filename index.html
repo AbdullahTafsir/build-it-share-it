@@ -967,17 +967,24 @@ function generateSchedule(laysIn, settings){
     }
     return start;
   }
+  // No activity is allowed during a break window. If a task of `dur` minutes
+  // started at `start` would overlap any break, push start to the next break-end
+  // and retry until the entire run fits in a clean window.
   function runUntil(start,dur){
     start=skipBreaks(start);
     let end=start+dur;
-    const applied=new Set();
-    let changed=true;
-    while(changed){ changed=false;
-      for(let i=0;i<breaks.length;i++){
-        if(applied.has(i)) continue;
-        const b=breaks[i];
-        if(b.from>=start && b.from<end){ end += (b.to-b.from); applied.add(i); changed=true; }
+    let safe=20;
+    while(safe-- > 0){
+      let pushed=false;
+      for(const b of breaks){
+        if(b.from<end && b.to>start){ // any overlap
+          start=b.to;
+          start=skipBreaks(start);
+          end=start+dur;
+          pushed=true; break;
+        }
       }
+      if(!pushed) break;
     }
     return {start,end};
   }
