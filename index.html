@@ -1102,6 +1102,42 @@ function generateSchedule(laysIn, settings){
   };
 }
 
+// Normalize older saved/generated plans so the UI always follows the current rule:
+// table wait > 30 minutes = BLOCKED + manual-cut suggestion.
+function normalizePlan(plan){
+  if(!plan) return plan;
+  const settings=plan.settings||{};
+  const shiftEnd=settings.shiftEnd?toMin(settings.shiftEnd):null;
+  const manualSet=new Set((settings.manualLays||[]).map(String));
+  const result=(plan.result||[]).map(l=>{
+    const spreadEnd=(l.spreadEndMin!=null)?l.spreadEndMin:((l.spreadStartMin!=null)?l.spreadStartMin+(+l.spreadDur||0):null);
+    const derivedWait=(l.cutStart!=null&&spreadEnd!=null)?Math.max(0,l.cutStart-spreadEnd):0;
+    const wait=Math.round(Math.max(0, +(l.tableWait??l.tableGap??derivedWait)||0));
+    const isManual=l.isManual||l.cutterNum==='M'||manualSet.has(String(l.layNo));
+    let status=l.status||'OK';
+    if(isManual) status='MANUAL';
+    else if(wait>30) status='BLOCKED';
+    else if(shiftEnd!=null&&l.cutEnd>shiftEnd) status='OVERTIME';
+    else if(wait>5) status='GAP';
+    else status='OK';
+    return {...l, tableWait:wait, tableGap:wait, status, isManual};
+  });
+  const summary={...(plan.summary||{})};
+  summary.totalLays=result.length;
+  summary.totalPlies=result.reduce((a,r)=>a+(+r.plies||0),0);
+  summary.issues=result.filter(r=>r.status!=='OK').length;
+  summary.blocked=result.filter(r=>r.status==='BLOCKED').length;
+  return {...plan, result, summary};
+}
+
+function rebuildPlanWithCurrentScheduler(plan){
+  if(plan?.inputLays?.length&&plan.settings){
+    const sch=generateSchedule(plan.inputLays, plan.settings);
+    return normalizePlan({...plan, result:sch.result, idleWindows:sch.idleWindows, summary:sch.summary});
+  }
+  return normalizePlan(plan);
+}
+
 // ─── SIMULATION ──────────────────────────────
 function _shuffle(a){ const b=a.slice(); for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } return b; }
 
@@ -1312,7 +1348,7 @@ async function applySimulationBest(){
       breaks:breaksList
     });
     const resp=await api('POST','/api/schedule/generate',{lays:reordered,planDate,planName});
-    currentPlan=resp.plan;
+    currentPlan=normalizePlan(resp.plan);
     // Reflect new priority order in the input table
     lays=reordered.map(l=>({...l, id:l.id||(++rowId)}));
     if(typeof renderLays==='function') renderLays();
@@ -1756,7 +1792,7 @@ async function generatePlan(){
     const planName=`Plan ${planDate} — ${laysArr.length} lays`;
     // Generate + auto-save plan + auto-save lays → all goes to Supabase in one call
     const resp=await api('POST','/api/schedule/generate',{lays:laysArr,planDate,planName});
-    currentPlan=resp.plan;
+    currentPlan=normalizePlan(resp.plan);
     renderKpi(currentPlan.summary);
     renderGantt(currentPlan);
     renderSchedule(currentPlan);
@@ -2070,16 +2106,16 @@ async function loadPlans(){
 async function loadPlan(id){
   try{
     const plan=await api('GET','/api/plans/'+id);
-    currentPlan=plan;
-    document.getElementById('shiftStart').value=plan.settings.shiftStart;
-    document.getElementById('shiftEnd').value=plan.settings.shiftEnd;
-    document.getElementById('numCutters').value=plan.settings.numCutters;
-    breaksList=plan.settings.breaks||[]; renderBreaks();
+    currentPlan=rebuildPlanWithCurrentScheduler(plan);
+    document.getElementById('shiftStart').value=currentPlan.settings.shiftStart;
+    document.getElementById('shiftEnd').value=currentPlan.settings.shiftEnd;
+    document.getElementById('numCutters').value=currentPlan.settings.numCutters;
+    breaksList=currentPlan.settings.breaks||[]; renderBreaks();
     document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
-    (plan.inputLays||[]).forEach(l=>addLayRow(l));
-    renderKpi(plan.summary); renderGantt(plan); renderSchedule(plan); renderDashboard(plan); renderIdleTracker(plan);
-    document.getElementById('ganttSub').textContent=plan.name+' (loaded from Supabase)';
-    document.getElementById('topStatus').textContent=plan.summary.totalLays+' lays · '+plan.summary.utilization+'% util';
+    (currentPlan.inputLays||[]).forEach(l=>addLayRow(l));
+    renderKpi(currentPlan.summary); renderGantt(currentPlan); renderSchedule(currentPlan); renderDashboard(currentPlan); renderIdleTracker(currentPlan);
+    document.getElementById('ganttSub').textContent=currentPlan.name+' (loaded with current scheduler rules)';
+    document.getElementById('topStatus').textContent=currentPlan.summary.totalLays+' lays · '+currentPlan.summary.utilization+'% util';
     switchPanel('gantt');
     toast('Loaded: '+plan.name);
   }catch(e){ toast('Error: '+e.message,'error'); }
@@ -2179,7 +2215,8 @@ async function exportReport(format){
   // Build summary table rows
   let rows='';
   (plan.result||[]).forEach(l=>{
-    const statusColor=l.status&&l.status.toLowerCase().includes('ok')?'#2E7D32':(l.idleDur>30?'#B71C1C':'#854F0B');
+    const wait=l.tableWait??l.tableGap??0;
+    const statusColor=l.status==='OK'?'#2E7D32':(l.status==='BLOCKED'?'#B71C1C':'#854F0B');
     rows+=`<tr>
       <td>${l.priority}</td><td><b>${l.layNo}</b></td><td>${l.style||''}</td><td>${l.buyer||''}</td>
       <td>${l.color||''}</td><td>${l.cutNo||''}</td>
@@ -2190,7 +2227,7 @@ async function exportReport(format){
       <td>SPR-${l.spreader}</td><td>${l.spreadStartTime}</td><td>${l.spreadEndTime}</td><td style="text-align:right">${l.spreadDur}m</td>
       <td>CUT-${l.cutterNum}</td><td>${l.cutStartTime}</td><td>${l.cutEndTime}</td><td style="text-align:right">${l.cutDur}m</td>
       <td style="text-align:right;color:${l.idleDur>30?'#B71C1C':'#4A5568'}">${l.idleDur||0}m</td>
-      <td style="text-align:right;color:${l.tableGap>30?'#854F0B':'#4A5568'}">${l.tableGap||0}m</td>
+      <td style="text-align:right;color:${wait>30?'#B71C1C':'#4A5568'}">${wait||0}m</td>
       <td style="color:${statusColor};font-weight:600">${l.status||'OK'}</td>
     </tr>`;
   });
@@ -2302,7 +2339,7 @@ async function exportReport(format){
 function exportCSV(){
   if(!currentPlan){ toast('Generate a plan first!','error'); return; }
   let csv='Priority,Session,Lay No,Style,Buyer,Color,Cut No,Marker Length,Plies,Ratio,Total Yards,Spreader,Spread Start,Spread End,Spread Dur,Cutter,Cut Start,Cut End,Cut Dur,Cutter Idle (min),Table Wait (min),Status\n';
-  currentPlan.result.forEach(l=>{csv+=`${l.priority},"${l.session}","${l.layNo}","${l.style}","${l.buyer}","${l.color}","${l.cutNo||''}",${l.markerLength||0},${l.plies||0},"${l.ratio||''}",${l.totalYards||0},${l.spreader},${l.spreadStartTime},${l.spreadEndTime},${l.spreadDur},${l.cutterNum},${l.cutStartTime},${l.cutEndTime},${l.cutDur},${l.idleDur},${l.tableGap},${l.status}\n`;});
+  currentPlan.result.forEach(l=>{csv+=`${l.priority},"${l.session}","${l.layNo}","${l.style}","${l.buyer}","${l.color}","${l.cutNo||''}",${l.markerLength||0},${l.plies||0},"${l.ratio||''}",${l.totalYards||0},${l.spreader},${l.spreadStartTime},${l.spreadEndTime},${l.spreadDur},${l.cutterNum},${l.cutStartTime},${l.cutEndTime},${l.cutDur},${l.idleDur},${l.tableWait??l.tableGap??0},${l.status}\n`;});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='Cutting_Gantt_'+currentPlan.planDate+'.csv'; a.click();
