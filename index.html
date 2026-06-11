@@ -1914,7 +1914,7 @@ function renderGantt(plan){
   });
   // shaded overtime region past shift end
   if(axisEnd>shE){
-    grid=grid.replace('</div>',`<div class="g-overtime" style="left:${pct(shE)};width:${wid(axisEnd-shE)}" title="Overtime past ${s.shiftEnd}"></div></div>`);
+    grid+=`<div class="g-overtime" style="left:${pct(shE)};width:${wid(axisEnd-shE)}" title="Overtime past ${s.shiftEnd}"></div>`;
   }
   grid+=`</div>`;
   // Split [from,to] into visible segments around breaks
