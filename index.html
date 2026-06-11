@@ -1951,7 +1951,7 @@ function renderGantt(plan){
     (plan.idleWindows[c]||[]).forEach(w=>{h+=`<div class="g-bar g-id" style="left:${pct(w.from)};width:${wid(w.to-w.from)}" title="IDLE ${Math.round(w.dur)}min">${w.dur>=20?'IDLE '+Math.round(w.dur)+'m':''}</div>`;});
     plan.result.filter(l=>l.cutterNum===c+1).sort((a,b)=>a.cutStart-b.cutStart).forEach(l=>{
       segs(l.cutStart,l.cutEnd).forEach(([a,b])=>{
-        h+=`<div class="g-bar g-ct" style="left:${pct(a)};width:${wid(b-a)}" title="${l.layNo} · ${l.cutDur}min · ${l.status} (click to preview on spreader row)" onclick="showCutPreview('${l.layNo}',${l.spreader},${l.spreadStartMin+l.spreadDur},${l.cutDur})">${l.layNo}</div>`;
+        h+=`<div class="g-bar g-ct" style="left:${pct(a)};width:${wid(b-a)}" title="${l.layNo} · ${l.cutDur}min · ${l.status} (click to preview on spreader row)" onclick="showCutPreview('${l.layNo}',${l.spreader},${l.cutStart},${l.cutEnd-l.cutStart})">${l.layNo}</div>`;
       });
     });
     h+=`</div></div>`;
@@ -1986,7 +1986,16 @@ function renderGantt(plan){
 function showCutPreview(layNo, spr, startMin, dur){
   if(!currentPlan) return;
   const s=currentPlan.summary;
-  const shS=toMin(s.shiftStart), shL=toMin(s.shiftEnd)-shS;
+  const shS=toMin(s.shiftStart);
+  // Match the gantt's axis: extend to ceil(maxEnd/30)*30 across all bars
+  let maxEnd=toMin(s.shiftEnd);
+  currentPlan.result.forEach(l=>{
+    const sEnd=(l.spreadEndMin!=null)?l.spreadEndMin:(l.spreadStartMin+l.spreadDur);
+    if(sEnd>maxEnd) maxEnd=sEnd;
+    if(l.cutEnd>maxEnd) maxEnd=l.cutEnd;
+  });
+  const axisEnd=Math.ceil(maxEnd/30)*30;
+  const shL=axisEnd-shS;
   const track=document.querySelector(`.g-track[data-spr="${spr}"]`);
   if(!track) return;
   track.querySelectorAll('.g-ph').forEach(n=>n.remove());
