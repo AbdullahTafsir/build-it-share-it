@@ -240,6 +240,8 @@ tbody tr:hover td{background:var(--gray1)}
 .modal{background:#fff;border-radius:var(--radius-lg);padding:24px;width:500px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow)}
 .modal-title{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
 .modal-close{cursor:pointer;color:var(--gray4);font-size:22px;line-height:1}
+.confirm-modal{width:340px;text-align:left}
+.confirm-msg{font-size:14px;color:var(--gray5);margin-bottom:16px}
 
 /* Gantt */
 .gantt-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--gray2);background:#fff}
@@ -834,6 +836,18 @@ tbody tr:hover td{background:var(--gray1)}
   </div>
 </div>
 
+<!-- Short Confirm Modal -->
+<div class="modal-bg" id="confirmModal">
+  <div class="modal confirm-modal">
+    <div class="modal-title" id="confirmTitle">Confirm</div>
+    <div class="confirm-msg" id="confirmMsg">Are you sure?</div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:0">
+      <button class="btn btn-outline" onclick="closeConfirm(false)">No</button>
+      <button class="btn btn-danger" onclick="closeConfirm(true)">Yes</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <datalist id="styleDatalist"></datalist>
 
@@ -925,6 +939,18 @@ function toast(msg, type='success'){
   t.style.background=type==='error'?'#B71C1C':type==='info'?'#1A5FA8':type==='warn'?'#854F0B':'#2E7D32';
   t.style.display='block'; clearTimeout(t._t);
   t._t=setTimeout(()=>t.style.display='none',3200);
+}
+
+let confirmResolver=null;
+function askConfirm(message, title='Confirm'){
+  document.getElementById('confirmTitle').textContent=title;
+  document.getElementById('confirmMsg').textContent=message;
+  document.getElementById('confirmModal').classList.add('open');
+  return new Promise(resolve=>{ confirmResolver=resolve; });
+}
+function closeConfirm(ok){
+  document.getElementById('confirmModal').classList.remove('open');
+  if(confirmResolver){ confirmResolver(ok); confirmResolver=null; }
 }
 
 // ─── CONFIG (built-in shared backend) ────────
@@ -1704,7 +1730,7 @@ function renderSettingsModal(){
 }
 
 async function resetCredentials(){
-  if(!confirm('This will disconnect Supabase. You will need to re-enter your credentials. Continue?')) return;
+  if(!await askConfirm('Disconnect now?')) return;
   await api('DELETE','/api/config');
   closeModal('settingsModal');
   document.getElementById('app').style.display='none';
@@ -1792,8 +1818,10 @@ function calcYards(rowId){
 function removeLayRow(id){ document.getElementById('row-'+id)?.remove(); lays=lays.filter(l=>l.id!==id); }
 function clearLays(){
   if(!lays.length)return;
-  if(!confirm('Clear all lays from the input table?'))return;
-  document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+  askConfirm('Clear all lays?').then(ok=>{
+    if(!ok)return;
+    document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+  });
 }
 function readLays(){
   return lays.map(l=>{
@@ -2171,7 +2199,7 @@ async function loadPlan(id){
 }
 
 async function deletePlan(id){
-  if(!confirm('Delete this plan?')) return;
+  if(!await askConfirm('Delete plan?')) return;
   try{ await api('DELETE','/api/plans/'+id); toast('Plan deleted','info'); loadPlans(); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
@@ -2205,7 +2233,7 @@ async function addStyle(){
 }
 
 async function deleteStyle(id){
-  if(!confirm('Delete this style?')) return;
+  if(!await askConfirm('Delete style?')) return;
   try{ await api('DELETE','/api/styles/'+id); await loadStyles(); toast('Style deleted','info'); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
