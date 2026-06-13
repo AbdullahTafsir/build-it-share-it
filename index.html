@@ -1400,7 +1400,7 @@ async function applySimulationBest(){
     document.getElementById('ganttSub').textContent=
       `${currentPlan.name} · ${currentPlan.summary.totalLays} lays · ${currentPlan.summary.utilization}% util · ✅ Saved`;
     document.getElementById('topStatus').textContent=`${reordered.length} lays · ${currentPlan.summary.utilization}% util`;
-    toast('✅ Best simulated plan applied & saved to Supabase!');
+    toast('✅ Best plan applied');
     switchPanel('gantt');
   }catch(e){ toast('Error saving plan: '+e.message,'error'); document.getElementById('topStatus').textContent='Error'; }
 }
@@ -1843,7 +1843,7 @@ async function generatePlan(){
       (resp.plan.savedToSupabase?' · ✅ Saved to Supabase':'');
     document.getElementById('topStatus').textContent=`${laysArr.length} lays · ${currentPlan.summary.utilization}% util`;
     switchPanel('gantt');
-    toast('✅ Plan generated & saved to Supabase automatically!');
+    toast('✅ Plan generated ✅ Plan generated & saved to Supabase automatically! saved');
   }catch(e){ toast('Error: '+e.message,'error'); document.getElementById('topStatus').textContent='Error'; }
 }
 
@@ -1854,7 +1854,7 @@ async function saveLaysToDB(){
     const planDate=document.getElementById('planDate').value||today();
     await api('DELETE','/api/lays?date='+planDate);
     await api('POST','/api/lays/bulk',{lays:laysArr});
-    toast(`✅ ${laysArr.length} lays saved to Supabase`);
+    toast(`✅ ${laysArr.length} lays saved`);
   }catch(e){ toast('Error: '+e.message,'error'); }
 }
 
@@ -2200,7 +2200,7 @@ async function addStyle(){
     closeModal('addStyleModal');
     ['nsCode','nsBuyer','nsDesc'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('nsCutDur').value='40';
-    await loadStyles(); toast('Style saved to Supabase ✅');
+    await loadStyles(); toast('Style saved ✅');
   }catch(e){ toast('Error: '+e.message,'error'); }
 }
 
@@ -2409,7 +2409,7 @@ function loadSampleData(){
    {priority:9,session:'Late Afternoon',layNo:'203-E',style:'DP2772',buyer:'TARGET',color:'NAVY',plies:110,spreader:4,spreadStart:'15:45',spreadDur:52,cutDur:45},
    {priority:10,session:'Late Afternoon',layNo:'191-22',style:'CP2772',buyer:'UA',color:'NAVY',plies:50,spreader:5,spreadStart:'15:45',spreadDur:28,cutDur:30}
   ].forEach(d=>addLayRow(d));
-  toast('Sample data loaded — click Generate & Save to Supabase');
+  toast('Sample data loaded — click Generate');
 }
 </script>
 </body>
