@@ -836,6 +836,18 @@ tbody tr:hover td{background:var(--gray1)}
   </div>
 </div>
 
+<!-- Short Confirm Modal -->
+<div class="modal-bg" id="confirmModal">
+  <div class="modal confirm-modal">
+    <div class="modal-title" id="confirmTitle">Confirm</div>
+    <div class="confirm-msg" id="confirmMsg">Are you sure?</div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:0">
+      <button class="btn btn-outline" onclick="closeConfirm(false)">No</button>
+      <button class="btn btn-danger" onclick="closeConfirm(true)">Yes</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <datalist id="styleDatalist"></datalist>
 
