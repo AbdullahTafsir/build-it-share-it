@@ -1865,7 +1865,7 @@ async function loadTodayLays(){
     if(!data.length){ toast('No lays found for '+d,'info'); return; }
     document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
     data.forEach(l=>addLayRow(l));
-    toast(`Loaded ${data.length} lays from Supabase`);
+    toast(`Loaded ${data.length} lays`);
   }catch(e){ toast('Error: '+e.message,'error'); }
 }
 
@@ -2133,7 +2133,7 @@ function renderIdleTracker(plan){
 
 // ─── PLANS ───────────────────────────────────
 async function loadPlans(){
-  document.getElementById('plansList').innerHTML='<div class="loading"><div class="spin"></div>Loading from Supabase...</div>';
+  document.getElementById('plansList').innerHTML='<div class="loading"><div class="spin"></div>Loading...</div>';
   try{
     const plans=await api('GET','/api/plans?limit=50');
     if(!plans.length){ document.getElementById('plansList').innerHTML='<p style="color:var(--gray4);font-size:13px;padding:8px">No plans yet. Generate a plan and it will appear here automatically.</p>'; return; }
@@ -2171,7 +2171,7 @@ async function loadPlan(id){
 }
 
 async function deletePlan(id){
-  if(!confirm('Delete this plan from Supabase?')) return;
+  if(!confirm('Delete this plan?')) return;
   try{ await api('DELETE','/api/plans/'+id); toast('Plan deleted','info'); loadPlans(); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
@@ -2205,7 +2205,7 @@ async function addStyle(){
 }
 
 async function deleteStyle(id){
-  if(!confirm('Delete this style from Supabase?')) return;
+  if(!confirm('Delete this style?')) return;
   try{ await api('DELETE','/api/styles/'+id); await loadStyles(); toast('Style deleted','info'); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
