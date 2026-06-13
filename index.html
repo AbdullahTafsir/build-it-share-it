@@ -1730,7 +1730,7 @@ function renderSettingsModal(){
 }
 
 async function resetCredentials(){
-  if(!confirm('This will disconnect Supabase. You will need to re-enter your credentials. Continue?')) return;
+  if(!await askConfirm('Disconnect now?')) return;
   await api('DELETE','/api/config');
   closeModal('settingsModal');
   document.getElementById('app').style.display='none';
@@ -1818,8 +1818,10 @@ function calcYards(rowId){
 function removeLayRow(id){ document.getElementById('row-'+id)?.remove(); lays=lays.filter(l=>l.id!==id); }
 function clearLays(){
   if(!lays.length)return;
-  if(!confirm('Clear all lays from the input table?'))return;
-  document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+  askConfirm('Clear all lays?').then(ok=>{
+    if(!ok)return;
+    document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+  });
 }
 function readLays(){
   return lays.map(l=>{
@@ -2197,7 +2199,7 @@ async function loadPlan(id){
 }
 
 async function deletePlan(id){
-  if(!confirm('Delete this plan?')) return;
+  if(!await askConfirm('Delete plan?')) return;
   try{ await api('DELETE','/api/plans/'+id); toast('Plan deleted','info'); loadPlans(); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
@@ -2231,7 +2233,7 @@ async function addStyle(){
 }
 
 async function deleteStyle(id){
-  if(!confirm('Delete this style?')) return;
+  if(!await askConfirm('Delete style?')) return;
   try{ await api('DELETE','/api/styles/'+id); await loadStyles(); toast('Style deleted','info'); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
