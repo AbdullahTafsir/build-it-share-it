@@ -941,6 +941,18 @@ function toast(msg, type='success'){
   t._t=setTimeout(()=>t.style.display='none',3200);
 }
 
+let confirmResolver=null;
+function askConfirm(message, title='Confirm'){
+  document.getElementById('confirmTitle').textContent=title;
+  document.getElementById('confirmMsg').textContent=message;
+  document.getElementById('confirmModal').classList.add('open');
+  return new Promise(resolve=>{ confirmResolver=resolve; });
+}
+function closeConfirm(ok){
+  document.getElementById('confirmModal').classList.remove('open');
+  if(confirmResolver){ confirmResolver(ok); confirmResolver=null; }
+}
+
 // ─── CONFIG (built-in shared backend) ────────
 const DEFAULT_CFG = {
   url: 'https://piolvcfjkjfzvxwbpjbg.supabase.co',
