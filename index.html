@@ -2131,7 +2131,7 @@ function renderDashboard(plan){
       <li><span class="rule-n">1</span>Auto cutter should never wait idle — assign cuts immediately when cutter is free.</li>
       <li><span class="rule-n">2</span>Spreading sequence should follow cutter ready time to minimise idle gaps.</li>
       <li><span class="rule-n">3</span>Minimum gap target between spread end and cut start = zero.</li>
-      <li><span class="rule-n">4</span>Release spreader table only after current lay's cutting has started AND ≥60% of its cut duration is complete.</li>
+      <li><span class="rule-n">4</span>Spreader becomes available for the next lay as soon as the current spread ends — no need to wait for cutting to complete.</li>
       <li><span class="rule-n">5</span>Prioritise short-spread lays to fill cutter idle windows.</li>
     </ul></div>`;
 }
