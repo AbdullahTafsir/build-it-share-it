@@ -1031,20 +1031,22 @@ function generateSchedule(laysIn, settings){
   // Plan a spread on `table` so its end aligns to `targetEnd` if possible.
   // earliestUser = typed spreadStart honored as a lower bound (never starts before what the user typed)
   // maxStart    = hard cap on spread start (used to enforce "no spreader idle at shift start, 30m max")
-  function planSpread(tableReadyVal, targetEnd, dur, earliestUser, maxStart){
+  function planSpread(tableReadyVal, targetEnd, dur, earliestUser, maxStart, setup){
+    setup = setup||0;
     const floor=Math.max(shS, tableReadyVal, earliestUser||0);
     let start=floor;
-    let sp=runUntil(start, dur);
+    let sp=runUntil(start, setup+dur);
     for(let i=0;i<4;i++){
       if(sp.end < targetEnd){
         const delta=targetEnd - sp.end;
         const next=start+delta;
-        if(maxStart!=null && next>maxStart){ start=Math.max(floor, maxStart); sp=runUntil(start, dur); break; }
+        if(maxStart!=null && next>maxStart){ start=Math.max(floor, maxStart); sp=runUntil(start, setup+dur); break; }
         start=next;
-        sp=runUntil(start, dur);
+        sp=runUntil(start, setup+dur);
       } else break;
     }
-    return sp;
+    // [sp.start, sp.start+setup) = setup; [sp.start+setup, sp.end) = actual spread
+    return {start: sp.start+setup, end: sp.end, setupStart: sp.start, setupDur: setup};
   }
 
   const sorted=[...laysIn].sort((a,b)=>a.priority-b.priority);
