@@ -1886,6 +1886,104 @@ function clearLays(){
     document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
   });
 }
+
+// ─── EXCEL IMPORT ────────────────────────────
+const LAY_IMPORT_HEADERS=[
+  ['priority','Priority'],['session','Session'],['layNo','Lay no.'],['style','Style'],
+  ['buyer','Buyer'],['color','Color'],['cutNo','Cut no.'],['markerLength','Marker length'],
+  ['plies','Plies'],['ratio','Ratio'],['totalYards','Total yards'],['spreader','Spreader'],
+  ['spreadStart','Spread start'],['spreadDur','Spread dur (min)'],['cutDur','Cut dur (min)']
+];
+function downloadLayTemplate(){
+  if(typeof XLSX==='undefined'){ toast('Excel library still loading, try again','error'); return; }
+  const ws=XLSX.utils.aoa_to_sheet([LAY_IMPORT_HEADERS.map(h=>h[1])]);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lays');
+  XLSX.writeFile(wb,'lay-input-template.xlsx');
+}
+function normHeader(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+function excelTimeToHHMM(v){
+  if(v==null||v==='') return '';
+  if(typeof v==='number'){
+    const totalMin=Math.round(v*24*60);
+    const h=Math.floor(totalMin/60)%24, m=totalMin%60;
+    return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+  }
+  const s=String(v).trim();
+  const m=s.match(/^(\d{1,2}):(\d{2})/);
+  if(m) return m[1].padStart(2,'0')+':'+m[2];
+  return s;
+}
+function mapImportRow(raw,headerMap){
+  const o={};
+  for(const [key,label] of LAY_IMPORT_HEADERS){
+    const src=headerMap[normHeader(label)];
+    if(src==null) continue;
+    let v=raw[src];
+    if(v==null||v==='') continue;
+    if(key==='spreadStart') v=excelTimeToHHMM(v);
+    else if(['priority','plies','spreader','spreadDur','cutDur'].includes(key)) v=parseInt(v,10)||0;
+    else if(['markerLength','totalYards'].includes(key)) v=parseFloat(v)||0;
+    o[key]=v;
+  }
+  return o;
+}
+function handleLayImport(ev){
+  const file=ev.target.files&&ev.target.files[0]; ev.target.value='';
+  if(!file) return;
+  if(typeof XLSX==='undefined'){ toast('Excel library still loading, try again','error'); return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
+      let rows=null;
+      for(const name of wb.SheetNames){
+        const r=XLSX.utils.sheet_to_json(wb.Sheets[name],{defval:''});
+        if(r.length){ rows=r; break; }
+      }
+      if(!rows){ toast('File is empty','error'); return; }
+      const headerMap={};
+      Object.keys(rows[0]||{}).forEach(k=>{ headerMap[normHeader(k)]=k; });
+      const known=LAY_IMPORT_HEADERS.some(h=>headerMap[normHeader(h[1])]!=null);
+      if(!known){ toast('No matching columns. Download template for expected headers.','error'); return; }
+      const mapped=rows.map(r=>mapImportRow(r,headerMap)).filter(o=>Object.keys(o).length);
+      if(!mapped.length){ toast('No data rows found','error'); return; }
+      promptImportMode(mapped.length).then(mode=>{
+        if(mode==='cancel') return;
+        if(mode==='replace'){
+          document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+        }
+        mapped.forEach(d=>{
+          addLayRow(d);
+          if(d.markerLength||d.plies) calcYards(rowId);
+        });
+        toast(`✅ Imported ${mapped.length} lays`);
+      });
+    }catch(err){ toast('Import failed: '+err.message,'error'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function promptImportMode(count){
+  return new Promise(resolve=>{
+    if(!lays.length){ resolve('replace'); return; }
+    const bg=document.createElement('div'); bg.className='modal-bg open';
+    bg.innerHTML=`<div class="modal" style="display:block;position:relative;max-width:420px">
+      <div class="modal-title">Import ${count} lays</div>
+      <div style="font-size:13px;color:var(--gray5);margin-bottom:16px">
+        You already have ${lays.length} lay${lays.length>1?'s':''} in the table. How should the imported rows be added?
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" data-act="cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" data-act="append">Append</button>
+        <button class="btn btn-danger btn-sm" data-act="replace">Replace all</button>
+      </div></div>`;
+    document.body.appendChild(bg);
+    bg.addEventListener('click',e=>{
+      const act=e.target.dataset?.act;
+      if(act){ bg.remove(); resolve(act); }
+      else if(e.target===bg){ bg.remove(); resolve('cancel'); }
+    });
+  });
+}
 function readLays(){
   return lays.map(l=>{
     const id=l.id, ssm=toMin(document.getElementById('ss-'+id).value), sd=+document.getElementById('sd-'+id).value;
