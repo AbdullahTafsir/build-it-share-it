@@ -1083,7 +1083,7 @@ function generateSchedule(laysIn, settings){
         if(!best || ct.end<best.ct.end) best={t,sp,ct};
       }
       if(!best) continue;
-      tableReady[best.t]=best.ct.start + Math.ceil((l.cutDur||0)*0.6);
+      tableReady[best.t]=best.sp.end;
       result.push({
         ...l, spreader:best.t, requestedSpreader:requested,
         spreadStartMin:best.sp.start, spreadEndMin:best.sp.end,
