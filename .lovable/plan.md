@@ -1,35 +1,40 @@
-## Goal
+## What to add
 
-Rewrite the scheduler in `index.html` so it treats the user-assigned spreader as a **hint only**, considers all 5 tables, aligns spreading to cutter availability, and flags lays whose table wait exceeds 30 minutes.
+A new "Fleece fabric spreaders" row in the **Shift settings** card on the Input tab, with five checkboxes (SPR-1 … SPR-5). Any spreader checked is treated as a fleece spreader for that day. The scheduler then adds a **3-minute setup** as busy spreader time before every spread on those spreaders (including the first one of the shift).
 
-## Rules
+## UI changes (`index.html`, Shift settings card ~line 604)
 
-1. **5 tables checked every time** — for each lay, evaluate all 5 spreader/tables (1..5), not only the one the user picked in the Input tab. The user's choice is a preference / tie-breaker, not a constraint.
-2. **Resource readiness** — at scheduling time compute:
-   - `tableReady[1..5]` — when each table/spreader frees up (previous lay releases the table after ≥60% of its cut is complete, as today).
-   - `cutterReady[1..nC]` — when each Auto Cutter (1, 2, …) becomes free.
-3. **Align spread-end to cutter-ready** — for each candidate `(table, cutter)` pair:
-   - earliestSpreadStart = max(shiftStart, tableReady[table])
-   - target spreadStart so that `spreadEnd == cutterReady[cutter]` (delay start if possible)
-   - clamp to earliestSpreadStart; recompute spreadEnd across breaks
-   - tableWait = max(0, cutStart − spreadEnd) where cutStart = max(spreadEnd, cutterReady[cutter])
-4. **Pick the best pair** — minimise `tableWait`, then earliest `cutEnd`, then prefer the user-assigned spreader as a tie-breaker.
-5. **Break handling** — unchanged; no spreading or cutting inside break windows.
-6. **BLOCKED + Manual Cut** — if best `tableWait > 30 min`:
-   - mark `status = "BLOCKED"` (red badge in Schedule + red wait segment in Gantt)
-   - render a **Suggest Manual Cut** button on the row; clicking it flips that lay to `cutterNum = "MANUAL"`, sets `cutStart = spreadEnd` (no auto-cutter wait), removes it from the auto-cutter queue, and re-renders all panels.
-7. **Reassignment visibility** — when the scheduler picks a different table than the user requested, the Schedule row shows the assigned table with a small "moved from SPR-X" note so the user can see what changed.
-8. **Overtime** — still allowed; Gantt axis already extends past shift end.
+Add below the existing 4-field grid:
 
-## Where the changes go (all in `index.html`)
+```text
+Fleece fabric spreaders (3-min setup before every spread)
+[ ] SPR-1   [ ] SPR-2   [ ] SPR-3   [ ] SPR-4   [ ] SPR-5
+```
 
-- `generateSchedule(laysIn, settings)` (~line 947) — replace the single-spreader greedy loop with the 5-table candidate search + align-to-cutter logic above. Keep the 60% spreader-release rule.
-- Per-row result — add `tableWait`, `assignedSpreader` (final), `requestedSpreader` (user's input), and extend `status` to `OK | OVERTIME | BLOCKED | MANUAL`.
-- `renderSchedule(plan)` (~1860) — BLOCKED badge, "Switch to Manual Cut" button, "moved from SPR-X" note when reassigned.
-- `renderGantt(plan)` (~1799) — red wait band for BLOCKED rows; MANUAL cuts on a dedicated "Manual" cutter row.
-- New `switchToManualCut(layNo)` — mutates `currentPlan`, re-runs `generateSchedule` with that lay flagged manual, re-renders.
-- Simulation reuses the upgraded scheduler automatically — no changes there.
+State is read at schedule time as `fleeceSpreaders: Set<number>` from `#fleeceSpr1..5`. Persisted in the saved-plan settings blob alongside shift start/end so reload restores them.
+
+## Scheduler changes (`generateSchedule`, ~line 947)
+
+- Pass `fleeceSpreaders` through `settings`.
+- For each candidate `(table t, cutter c)`:
+  - `setup = fleeceSpreaders.has(t) ? 3 : 0`
+  - `earliestSpreadStart = max(shiftStart, tableReady[t]) + setup` (setup occupies the spreader, so `tableReady[t]` advances by `setup` after this lay completes — i.e. `tableReady[t] = spreadEnd` already accounts for it because the setup window precedes spreadStart, not follows spreadEnd).
+  - Setup window must not overlap a break: if `[spreadStart-setup, spreadStart)` crosses a break, push spreadStart past the break and recompute.
+- Record `setupDur` (0 or 3) on each result row so the Gantt and Schedule can show it.
+- All three scheduling branches in `generateSchedule` (best-fit, fallback, manual) apply the same rule.
+
+## Visuals
+
+- **Gantt** (~line 1961): render a small grey/striped `g-bar g-setup` segment of width `setupDur` immediately before each spread bar on fleece spreader rows. Add a CSS class `.g-setup` (light grey, hatched).
+- **Schedule table** (~line 1385): no new column; add a small "+3m setup" note next to Spread start when `setupDur > 0`.
+- **Gantt section label** for fleece rows: append `(Fleece · 3m setup)` to the SPR-X label.
+- **CSV export** (~line 2418): add `Setup (min)` column.
+
+## Rules panel (~line 2134)
+
+Add: "Fleece fabric spreaders require a 3-minute setup before every spread; setup time counts as spreader-busy and cannot overlap breaks."
 
 ## Out of scope
 
-- No DB schema changes, no Input tab column changes, no Simulation weight changes.
+- No DB schema change (fleece flags live in the settings JSON of the saved plan).
+- No change to cutter logic, table-wait/BLOCKED rules, or simulation weights.
