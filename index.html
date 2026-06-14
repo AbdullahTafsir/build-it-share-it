@@ -1756,7 +1756,7 @@ function enterApp(){
   document.getElementById('setupScreen').classList.remove('show');
   document.getElementById('app').style.display='block';
   document.getElementById('planDate').value=today();
-  initData();
+  initData().then(()=>{ try{ restoreSession(); }catch{} });
 }
 
 function goHome(){
