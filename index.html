@@ -2106,7 +2106,7 @@ function renderSchedule(plan){
       <td>${(l.plies||0).toLocaleString()}</td><td>${l.ratio||'—'}</td>
       <td>${l.totalYards?l.totalYards.toFixed(2):'—'}</td>
       <td><span class="badge b-blue">SP-${l.spreader}</span>${moved}</td>
-      <td class="mono">${l.spreadStartTime}</td><td class="mono">${l.spreadEndTime}</td><td>${l.spreadDur}m</td>
+      <td class="mono">${l.spreadStartTime}${l.setupDur>0?` <span style="font-size:9px;color:#64748b;font-weight:600" title="Fleece setup">+${l.setupDur}m setup</span>`:''}</td><td class="mono">${l.spreadEndTime}</td><td>${l.spreadDur}m</td>
       <td>${cutLbl}</td>
       <td class="mono">${l.cutStartTime}</td><td class="mono">${l.cutEndTime}</td><td>${l.cutDur}m</td>
       <td>${idB}</td><td>${waitB}</td>
