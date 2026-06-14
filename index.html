@@ -1890,6 +1890,7 @@ async function generatePlan(){
       numCutters:+document.getElementById('numCutters').value,
       breaks:breaksList
     });
+    saveFleeceSpreaders();
     const planDate=document.getElementById('planDate').value||today();
     const planName=`Plan ${planDate} — ${laysArr.length} lays`;
     // Generate + auto-save plan + auto-save lays → all goes to Supabase in one call
