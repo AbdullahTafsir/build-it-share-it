@@ -1066,7 +1066,8 @@ function generateSchedule(laysIn, settings){
       // Manual cut: pick best of the 5 tables; no auto cutter used
       let best=null;
       for(let t=1;t<=NUM_TABLES;t++){
-        const sp=planSpread(tableReady[t], shS, l.spreadDur, userStart);
+        const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
+        const sp=planSpread(tableReady[t], shS, l.spreadDur, userStart, null, setup);
         const ct=runUntil(sp.end, l.cutDur);
         const cand={t,sp,ct};
         if(!best
@@ -1081,6 +1082,7 @@ function generateSchedule(laysIn, settings){
         spreader:best.t, requestedSpreader:requested,
         spreadStartMin:best.sp.start, spreadEndMin:best.sp.end,
         spreadStartTime:toTime(best.sp.start), spreadEndTime:toTime(best.sp.end),
+        setupStartMin:best.sp.setupStart, setupDur:best.sp.setupDur,
         cutterNum:'M',
         cutStart:best.ct.start, cutEnd:best.ct.end,
         cutStartTime:toTime(best.ct.start), cutEndTime:toTime(best.ct.end),
@@ -1094,7 +1096,8 @@ function generateSchedule(laysIn, settings){
       // No auto cutters configured → fall back to manual treatment so we never crash.
       let best=null;
       for(let t=1;t<=NUM_TABLES;t++){
-        const sp=planSpread(tableReady[t], shS, l.spreadDur, userStart);
+        const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
+        const sp=planSpread(tableReady[t], shS, l.spreadDur, userStart, null, setup);
         const ct=runUntil(sp.end, l.cutDur);
         if(!best || ct.end<best.ct.end) best={t,sp,ct};
       }
@@ -1104,6 +1107,7 @@ function generateSchedule(laysIn, settings){
         ...l, spreader:best.t, requestedSpreader:requested,
         spreadStartMin:best.sp.start, spreadEndMin:best.sp.end,
         spreadStartTime:toTime(best.sp.start), spreadEndTime:toTime(best.sp.end),
+        setupStartMin:best.sp.setupStart, setupDur:best.sp.setupDur,
         cutterNum:'M', cutStart:best.ct.start, cutEnd:best.ct.end,
         cutStartTime:toTime(best.ct.start), cutEndTime:toTime(best.ct.end),
         idleDur:0, tableGap:0, tableWait:0,
@@ -1116,11 +1120,12 @@ function generateSchedule(laysIn, settings){
     // then prefer the user's requested table as a tie-breaker.
     let best=null;
     for(let t=1;t<=NUM_TABLES;t++){
+      const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
       for(let c=0;c<nC;c++){
         // Rule: at shift start every spreader should be working; allow at most 30 min idle if unavoidable.
         const firstOnTable=tableReady[t]<=shS;
         const cap=firstOnTable?shS+30:null;
-        const sp=planSpread(tableReady[t], cutterReady[c], l.spreadDur, userStart, cap);
+        const sp=planSpread(tableReady[t], cutterReady[c], l.spreadDur, userStart, cap, setup);
         const cutEarliest=Math.max(cutterReady[c], sp.end);
         const ct=runUntil(cutEarliest, l.cutDur);
         const wait=Math.max(0, ct.start - sp.end);
@@ -1155,6 +1160,7 @@ function generateSchedule(laysIn, settings){
       spreader:t, requestedSpreader:requested,
       spreadStartMin:sp.start, spreadEndMin:sp.end,
       spreadStartTime:toTime(sp.start), spreadEndTime:toTime(sp.end),
+      setupStartMin:sp.setupStart, setupDur:sp.setupDur,
       cutterNum:c+1,
       cutStart:ct.start, cutEnd:ct.end,
       cutStartTime:toTime(ct.start), cutEndTime:toTime(ct.end),
