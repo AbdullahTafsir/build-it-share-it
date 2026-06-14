@@ -272,6 +272,26 @@ tbody tr:hover td{background:var(--gray1)}
 .g-id{background:repeating-linear-gradient(45deg,#ef4444,#ef4444 6px,#dc2626 6px,#dc2626 12px);color:#fff;opacity:.92}
 .g-brk{background:repeating-linear-gradient(45deg,#10b981,#10b981 5px,#059669 5px,#059669 10px);color:#fff;opacity:.88}
 .g-setup{background:repeating-linear-gradient(45deg,#94a3b8,#94a3b8 4px,#64748b 4px,#64748b 8px);color:#fff;font-size:9px;opacity:.92}
+.fleece-panel{margin-top:14px;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%);border:1px solid #e2e8f0;box-shadow:inset 0 1px 0 rgba(255,255,255,.6)}
+.fleece-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.fleece-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 10px -3px rgba(99,102,241,.45);flex-shrink:0}
+.fleece-icon svg{width:18px;height:18px}
+.fleece-titles{min-width:0}
+.fleece-title{font-size:13px;font-weight:700;color:#0f172a;letter-spacing:-.01em}
+.fleece-sub{font-size:11px;color:#64748b;margin-top:2px}
+.fleece-sub b{color:#4f46e5;font-weight:600}
+.fleece-chips{display:flex;flex-wrap:wrap;gap:8px}
+.fleece-chip{position:relative;display:inline-flex;align-items:center;gap:8px;padding:8px 12px 8px 10px;border-radius:999px;background:#fff;border:1.5px solid #e2e8f0;font-size:12.5px;font-weight:600;color:#475569;cursor:pointer;transition:all .15s ease;user-select:none}
+.fleece-chip:hover{border-color:#c7d2fe;background:#fafbff;transform:translateY(-1px);box-shadow:0 4px 10px -4px rgba(99,102,241,.25)}
+.fleece-chip input{position:absolute;opacity:0;pointer-events:none}
+.fleece-chip .fc-dot{width:14px;height:14px;border-radius:50%;border:2px solid #cbd5e1;background:#fff;display:grid;place-items:center;transition:all .15s ease;flex-shrink:0}
+.fleece-chip .fc-dot::after{content:"";width:6px;height:6px;border-radius:50%;background:#fff;transform:scale(0);transition:transform .15s ease}
+.fleece-chip .fc-badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:#f1f5f9;color:#94a3b8;letter-spacing:.02em;transition:all .15s ease}
+.fleece-chip:has(input:checked){background:linear-gradient(135deg,#6366f1,#8b5cf6);border-color:transparent;color:#fff;box-shadow:0 6px 16px -6px rgba(99,102,241,.55)}
+.fleece-chip:has(input:checked) .fc-dot{border-color:rgba(255,255,255,.85);background:rgba(255,255,255,.18)}
+.fleece-chip:has(input:checked) .fc-dot::after{transform:scale(1);background:#fff}
+.fleece-chip:has(input:checked) .fc-badge{background:rgba(255,255,255,.22);color:#fff}
+.fleece-chip:focus-within{outline:2px solid #818cf8;outline-offset:2px}
 .g-ct{cursor:pointer}
 .g-ph{background:repeating-linear-gradient(45deg,rgba(139,92,246,.55),rgba(139,92,246,.55) 6px,rgba(124,58,237,.55) 6px,rgba(124,58,237,.55) 12px);color:#fff;border:1.5px dashed #7c3aed;animation:phPulse 1s ease-in-out infinite}
 @keyframes phPulse{0%,100%{opacity:.85}50%{opacity:1}}
