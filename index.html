@@ -997,6 +997,8 @@ function generateSchedule(laysIn, settings){
   const NUM_TABLES=5;
   const WAIT_LIMIT=30; // BLOCKED threshold (minutes of table waiting)
   const manualSet=new Set((settings.manualLays||[]).map(String));
+  const fleeceSet=new Set((settings.fleeceSpreaders||[]).map(Number));
+  const FLEECE_SETUP=3; // minutes of spreader setup before every fleece spread
 
   function skipBreaks(start){
     let changed=true;
