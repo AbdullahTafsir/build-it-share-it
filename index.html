@@ -2459,8 +2459,8 @@ async function exportReport(format){
 // ─── CSV EXPORT ───────────────────────────────
 function exportCSV(){
   if(!currentPlan){ toast('Generate a plan first!','error'); return; }
-  let csv='Priority,Session,Lay No,Style,Buyer,Color,Cut No,Marker Length,Plies,Ratio,Total Yards,Spreader,Spread Start,Spread End,Spread Dur,Cutter,Cut Start,Cut End,Cut Dur,Cutter Idle (min),Table Wait (min),Status\n';
-  currentPlan.result.forEach(l=>{csv+=`${l.priority},"${l.session}","${l.layNo}","${l.style}","${l.buyer}","${l.color}","${l.cutNo||''}",${l.markerLength||0},${l.plies||0},"${l.ratio||''}",${l.totalYards||0},${l.spreader},${l.spreadStartTime},${l.spreadEndTime},${l.spreadDur},${l.cutterNum},${l.cutStartTime},${l.cutEndTime},${l.cutDur},${l.idleDur},${l.tableWait??l.tableGap??0},${l.status}\n`;});
+  let csv='Priority,Session,Lay No,Style,Buyer,Color,Cut No,Marker Length,Plies,Ratio,Total Yards,Spreader,Setup (min),Spread Start,Spread End,Spread Dur,Cutter,Cut Start,Cut End,Cut Dur,Cutter Idle (min),Table Wait (min),Status\n';
+  currentPlan.result.forEach(l=>{csv+=`${l.priority},"${l.session}","${l.layNo}","${l.style}","${l.buyer}","${l.color}","${l.cutNo||''}",${l.markerLength||0},${l.plies||0},"${l.ratio||''}",${l.totalYards||0},${l.spreader},${l.setupDur||0},${l.spreadStartTime},${l.spreadEndTime},${l.spreadDur},${l.cutterNum},${l.cutStartTime},${l.cutEndTime},${l.cutDur},${l.idleDur},${l.tableWait??l.tableGap??0},${l.status}\n`;});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='Cutting_Gantt_'+currentPlan.planDate+'.csv'; a.click();
