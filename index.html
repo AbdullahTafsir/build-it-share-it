@@ -1812,6 +1812,7 @@ async function loadSettings(){
 function getFleeceSpreaders(){
   try{ return JSON.parse(localStorage.getItem('cw_fleece_spr')||'[]').map(Number); }catch{ return []; }
 }
+function syncFleeceChip(){ /* CSS :has(input:checked) handles styling */ }
 function saveFleeceSpreaders(){
   const arr=[1,2,3,4,5].filter(n=>{ const el=document.getElementById('fleeceSpr'+n); return el && el.checked; });
   localStorage.setItem('cw_fleece_spr', JSON.stringify(arr));
