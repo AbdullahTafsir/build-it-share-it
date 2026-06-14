@@ -1058,7 +1058,7 @@ function generateSchedule(laysIn, settings){
           || (ct.end===best.ct.end && t===requested && best.t!==requested)) best=cand;
       }
       if(!best) continue;
-      tableReady[best.t]=best.ct.start + Math.ceil((l.cutDur||0)*0.6);
+      tableReady[best.t]=best.sp.end;
       const status=best.ct.end>shE?'OVERTIME':'MANUAL';
       result.push({
         ...l,
@@ -1083,7 +1083,7 @@ function generateSchedule(laysIn, settings){
         if(!best || ct.end<best.ct.end) best={t,sp,ct};
       }
       if(!best) continue;
-      tableReady[best.t]=best.ct.start + Math.ceil((l.cutDur||0)*0.6);
+      tableReady[best.t]=best.sp.end;
       result.push({
         ...l, spreader:best.t, requestedSpreader:requested,
         spreadStartMin:best.sp.start, spreadEndMin:best.sp.end,
@@ -1126,7 +1126,7 @@ function generateSchedule(laysIn, settings){
     }
     cutterReady[c]=ct.end;
     cutTimePerCutter[c]+=l.cutDur;
-    tableReady[t]=ct.start + Math.ceil((l.cutDur||0)*0.6);
+    tableReady[t]=sp.end;
 
     let status;
     if(wait>WAIT_LIMIT) status='BLOCKED';
@@ -2131,7 +2131,7 @@ function renderDashboard(plan){
       <li><span class="rule-n">1</span>Auto cutter should never wait idle — assign cuts immediately when cutter is free.</li>
       <li><span class="rule-n">2</span>Spreading sequence should follow cutter ready time to minimise idle gaps.</li>
       <li><span class="rule-n">3</span>Minimum gap target between spread end and cut start = zero.</li>
-      <li><span class="rule-n">4</span>Release spreader table only after current lay's cutting has started AND ≥60% of its cut duration is complete.</li>
+      <li><span class="rule-n">4</span>Spreader becomes available for the next lay as soon as the current spread ends — no need to wait for cutting to complete.</li>
       <li><span class="rule-n">5</span>Prioritise short-spread lays to fill cutter idle windows.</li>
     </ul></div>`;
 }
