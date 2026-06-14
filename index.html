@@ -1666,12 +1666,64 @@ function switchPanel(name){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('panel-'+name)?.classList.add('active');
   document.getElementById('nav-'+name)?.classList.add('active');
+  activePanel=name;
+  persistSession();
   if(name==='plans')    loadPlans();
   if(name==='styles')   loadStyles();
   if(name==='activity') loadActivity();
   if(name==='analytics')loadAnalytics();
   if(window.innerWidth<=768) toggleSidebar(false);
 }
+
+// ─── SESSION PERSISTENCE ─────────────────────
+const SESSION_KEY='cw_session_v1';
+let activePanel='input', _restoringSession=false;
+function persistSession(){
+  if(_restoringSession) return;
+  try{
+    const laysData=lays.length?readLays():[];
+    const state={
+      lays:laysData,
+      planDate:document.getElementById('planDate')?.value||'',
+      activePanel,
+      currentPlan: currentPlan||null,
+      savedAt: Date.now()
+    };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(state));
+  }catch{}
+}
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch{} }
+function restoreSession(){
+  let state=null;
+  try{ state=JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch{}
+  if(!state) return false;
+  _restoringSession=true;
+  try{
+    if(state.planDate) document.getElementById('planDate').value=state.planDate;
+    if(Array.isArray(state.lays) && state.lays.length){
+      document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+      state.lays.forEach(l=>addLayRow(l));
+    }
+    if(state.currentPlan){
+      currentPlan=state.currentPlan;
+      try{
+        renderKpi(currentPlan.summary);
+        renderGantt(currentPlan);
+        renderSchedule(currentPlan);
+        renderDashboard(currentPlan);
+        renderIdleTracker(currentPlan);
+        if(currentPlan.summary){
+          document.getElementById('topStatus').textContent=
+            `${currentPlan.summary.totalLays||state.lays.length} lays · ${currentPlan.summary.utilization}% util`;
+        }
+      }catch{}
+    }
+    if(state.activePanel) switchPanel(state.activePanel);
+    return true;
+  }finally{ _restoringSession=false; }
+}
+window.addEventListener('beforeunload', persistSession);
+
 function toggleSidebar(force){
   const sb=document.querySelector('.sidebar'); const bd=document.getElementById('sbBackdrop');
   if(!sb) return;
