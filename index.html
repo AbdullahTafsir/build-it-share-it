@@ -1776,6 +1776,17 @@ async function loadSettings(){
   document.getElementById('shiftEnd').value=s.shiftEnd||'18:00';
   document.getElementById('numCutters').value=s.numCutters||2;
   breaksList=s.breaks||[]; renderBreaks();
+  // Fleece spreaders are stored locally (no DB schema change)
+  const fleece=getFleeceSpreaders();
+  [1,2,3,4,5].forEach(n=>{ const el=document.getElementById('fleeceSpr'+n); if(el) el.checked=fleece.includes(n); });
+}
+
+function getFleeceSpreaders(){
+  try{ return JSON.parse(localStorage.getItem('cw_fleece_spr')||'[]').map(Number); }catch{ return []; }
+}
+function saveFleeceSpreaders(){
+  const arr=[1,2,3,4,5].filter(n=>{ const el=document.getElementById('fleeceSpr'+n); return el && el.checked; });
+  localStorage.setItem('cw_fleece_spr', JSON.stringify(arr));
 }
 
 async function saveSettings(){
