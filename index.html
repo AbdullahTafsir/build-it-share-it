@@ -1992,13 +1992,21 @@ function renderGantt(plan){
   h+=`<div class="g-sec"><div class="g-sec-lbl">Spreader tables</div><div class="g-sec-ln"></div></div>`;
   const tableSet=new Set([1,2,3,4,5, ...plan.result.map(l=>l.spreader)]);
   [...tableSet].sort((a,b)=>a-b).forEach(sp=>{
-    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">SPREADER-${sp}</div><div class="g-rlbl-s">Table ${sp}</div></div><div class="g-track" data-spr="${sp}">${grid}`;
+    const fleeceArr=(plan.settings&&plan.settings.fleeceSpreaders)||getFleeceSpreaders();
+    const isFleece=fleeceArr.map(Number).includes(sp);
+    const fleeceTag=isFleece?' <span style="font-size:9px;background:#64748b;color:#fff;padding:1px 4px;border-radius:3px;margin-left:4px">FLEECE</span>':'';
+    const fleeceSub=isFleece?'Table '+sp+' · 3m setup':'Table '+sp;
+    h+=`<div class="g-row"><div class="g-rlbl"><div class="g-rlbl-m">SPREADER-${sp}${fleeceTag}</div><div class="g-rlbl-s">${fleeceSub}</div></div><div class="g-track" data-spr="${sp}">${grid}`;
     breaks.forEach(b=>{const bf=toMin(b.from),bt=toMin(b.to);h+=`<div class="g-bar g-brk" style="left:${pct(bf)};width:${wid(bt-bf)}" title="${b.name} (${b.from}–${b.to})"></div>`;});
     plan.result.filter(l=>l.spreader===sp).forEach(l=>{
       const end=(l.spreadEndMin!=null)?l.spreadEndMin:(l.spreadStartMin+l.spreadDur);
       const cls=l.status==='BLOCKED'?'g-sp g-bl':'g-sp';
+      // Setup segment (fleece) immediately before spread
+      if(l.setupDur>0 && l.setupStartMin!=null){
+        h+=`<div class="g-bar g-setup" style="left:${pct(l.setupStartMin)};width:${wid(l.spreadStartMin-l.setupStartMin)}" title="Fleece setup · ${l.setupDur}min before ${l.layNo}">${l.setupDur>=3?'+'+l.setupDur+'m':''}</div>`;
+      }
       segs(l.spreadStartMin,end).forEach(([a,b])=>{
-        h+=`<div class="g-bar ${cls}" style="left:${pct(a)};width:${wid(b-a)}" title="${l.layNo} · ${l.style} · ${l.color} · ${l.plies}pl · ${l.spreadDur}min${l.status==='BLOCKED'?' · BLOCKED ('+l.tableWait+'m wait)':''}">${l.layNo}</div>`;
+        h+=`<div class="g-bar ${cls}" style="left:${pct(a)};width:${wid(b-a)}" title="${l.layNo} · ${l.style} · ${l.color} · ${l.plies}pl · ${l.spreadDur}min${l.setupDur>0?' (+'+l.setupDur+'m fleece setup)':''}${l.status==='BLOCKED'?' · BLOCKED ('+l.tableWait+'m wait)':''}">${l.layNo}</div>`;
       });
       // visualise wait between spread end and cut start
       if(l.tableWait>2 && l.cutStart>end){
