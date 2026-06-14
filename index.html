@@ -1557,6 +1557,7 @@ async function api(method, path, body){
   // Generate plan (client-side scheduler + save)
   if(path==='/api/schedule/generate' && method==='POST'){
     const settings=await api('GET','/api/settings');
+    settings.fleeceSpreaders=getFleeceSpreaders();
     const sch=generateSchedule(body.lays, settings);
     // Replace lays for date
     await sb.from('lays').delete().eq('plan_date',body.planDate);
