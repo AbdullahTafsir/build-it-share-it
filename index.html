@@ -1126,7 +1126,7 @@ function generateSchedule(laysIn, settings){
     }
     cutterReady[c]=ct.end;
     cutTimePerCutter[c]+=l.cutDur;
-    tableReady[t]=ct.start + Math.ceil((l.cutDur||0)*0.6);
+    tableReady[t]=sp.end;
 
     let status;
     if(wait>WAIT_LIMIT) status='BLOCKED';
