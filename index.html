@@ -1932,10 +1932,13 @@ function calcYards(rowId){
 }
 function removeLayRow(id){ document.getElementById('row-'+id)?.remove(); lays=lays.filter(l=>l.id!==id); }
 function clearLays(){
-  if(!lays.length)return;
-  askConfirm('Clear all lays?').then(ok=>{
+  if(!lays.length && !currentPlan){ clearSession(); return; }
+  askConfirm('Start a new plan? This clears all lays and the current schedule.').then(ok=>{
     if(!ok)return;
     document.getElementById('layBody').innerHTML=''; lays=[]; rowId=0;
+    currentPlan=null;
+    document.getElementById('topStatus').textContent='Ready';
+    clearSession();
   });
 }
 
