@@ -1105,8 +1105,10 @@ function generateSchedule(laysIn, settings){
 
   function bestManualCandidate(l, requested, userStart){
     let best=null;
+    // Fleece is a property of the LAY (identified by its input spreader),
+    // not the assigned table. The +3m setup follows the lay anywhere.
+    const setup=fleeceSet.has(requested)?FLEECE_SETUP:0;
     for(let t=1;t<=NUM_TABLES;t++){
-      const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
       // Spreading starts as soon as the spreader is free; never delay it to cutter timing.
       const sp=planSpread(tableReady[t], tableReady[t], l.spreadDur, userStart, null, setup);
       const ct=runUntil(sp.end, l.cutDur);
