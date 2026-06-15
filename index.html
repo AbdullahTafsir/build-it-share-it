@@ -1259,6 +1259,7 @@ function generateSchedule(laysIn, settings){
     });
   }
 
+  const scheduled=result.filter(r=>r.status!=='UNSCHEDULED');
   const totalCuttingTime=cutTimePerCutter.reduce((a,b)=>a+b,0);
   const totalIdleTime=idlePerCutter.reduce((a,b)=>a+b,0);
   const totalBrk=breaks.reduce((a,b)=>a+(b.to-b.from),0);
@@ -1266,15 +1267,16 @@ function generateSchedule(laysIn, settings){
   const utilization=Math.round(totalCuttingTime/avail*100);
   const issues=result.filter(r=>r.status!=='OK').length;
   const blocked=result.filter(r=>r.status==='BLOCKED').length;
+  const unscheduled=result.filter(r=>r.status==='UNSCHEDULED').length;
 
   return {
     result, idleWindows,
     summary:{
       shiftStart:settings.shiftStart, shiftEnd:settings.shiftEnd, numCutters:nC,
-      totalLays:result.length, totalPlies:result.reduce((a,r)=>a+(+r.plies||0),0),
-      totalMarkerLength:result.reduce((a,r)=>a+(+r.markerLength||0),0),
-      totalYards:result.reduce((a,r)=>a+(+r.totalYards||0),0),
-      totalCuttingTime, totalIdleTime, utilization, issues, blocked,
+      totalLays:scheduled.length, totalPlies:scheduled.reduce((a,r)=>a+(+r.plies||0),0),
+      totalMarkerLength:scheduled.reduce((a,r)=>a+(+r.markerLength||0),0),
+      totalYards:scheduled.reduce((a,r)=>a+(+r.totalYards||0),0),
+      totalCuttingTime, totalIdleTime, utilization, issues, blocked, unscheduled,
       cutTimePerCutter, idlePerCutter
     }
   };
