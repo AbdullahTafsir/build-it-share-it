@@ -1,51 +1,55 @@
-# Excel upload for Lay input table
+## Goal
 
-Add a one-click Excel importer to the "Lay input table" card. The user picks an `.xlsx`/`.xls` file, the system reads the first sheet, maps columns by exact header names, and populates the table via the existing `addLayRow(...)` flow.
+Rework the in-browser scheduler in `index.html` (`generateSchedule`, ~lines 1020–1219) so the generated plan:
 
-## UI changes (`index.html`, Lay input card ~line 661)
+1. Has near-zero overtime (cut work past shift end).
+2. Keeps spreader tables running back-to-back (no large mid-day gaps like on Spreader-2 and Spreader-5 in the screenshot).
+3. Automatically routes a lay to a **manual cutter** when the best auto-cutter option would leave that lay waiting > 30 minutes for cutting.
 
-Add a new button next to "+ Add lay" / "Clear all":
+No UI/layout changes — only scheduling logic + the resulting badge/status.
 
-```text
-[+ Add lay]  [📥 Import Excel]  [🗑 Clear all]  [⬇ Download template]
+## Changes
+
+### 1. Auto-promote to manual on >30 min wait
+In the auto branch (~line 1147), after computing the best `(table, cutter)` candidate:
+- If `best.wait > 30`, discard the auto choice and instead run the manual-cut branch (try all 5 tables, no auto cutter consumed). Mark the lay `status='MANUAL'`, `cutterNum='M'`, `isManual=true`, push to `result`, and `continue`.
+- Net effect: BLOCKED disappears — every lay that would block an auto cutter becomes a manual cut automatically. `WAIT_LIMIT` becomes the manual-promotion threshold instead of just a status tag.
+
+### 2. Selection scoring: penalize overtime + spreader gap
+Replace the current "minimize wait, then cutEnd, then prefer requested table" tiebreaker with a weighted cost per candidate:
+
 ```
-
-- `📥 Import Excel` opens a hidden `<input type="file" accept=".xlsx,.xls">`.
-- `⬇ Download template` generates a blank `.xlsx` with the exact headers below so the user always has a working template.
-
-## Expected headers (exact match, case-insensitive, trimmed)
-
-```text
-Priority | Session | Lay no. | Style | Buyer | Color | Cut no. |
-Marker length | Plies | Ratio | Total yards | Spreader |
-Spread start | Spread dur (min) | Cut dur (min)
+spreaderGap = max(0, sp.start - tableReady[t])   // idle time on the table before this lay
+overtime    = max(0, ct.end - shE)
+cost = wait*1.0 + overtime*3.0 + spreaderGap*1.5 + (ct.end - shS)*0.05
+       + (t === requested ? 0 : 0.5)
 ```
+Pick the candidate with the lowest cost. This naturally:
+- Prefers cutters/tables that don't push work past `shiftEnd` (kills overtime).
+- Prefers tables that are already free now over tables that would sit idle (closes the Spreader-2/5 gaps).
+- Keeps existing wait minimization and requested-table tiebreak.
 
-- Header lookup is case-insensitive and tolerates surrounding whitespace, but the spelling must match (e.g. "Lay no.", "Spread dur (min)"). Unknown columns are ignored. Missing optional columns become blank cells.
-- Internal field mapping mirrors what `addLayRow({...})` already accepts (priority, session, layNo, style, buyer, color, cutNo, markerLen, plies, ratio, totalYards, spreader, spreadStart, spreadDur, cutDur — exact keys verified against current `addLayRow` before coding).
+### 3. Tighten the "first lay per table" cap
+The current `cap = firstOnTable ? shS+30 : null` only constrains the very first lay per table. Apply the same idea generally: when choosing a table, prefer one whose `tableReady[t] ≈ floor` (already covered by the `spreaderGap` term in the cost above), so this becomes a side-effect of the new scoring — no separate code path needed, but keep the existing 30-min start cap intact for the first lay.
 
-## Upload flow
+### 4. Status derivation unchanged otherwise
+After the new logic:
+- `status='MANUAL'` for auto-promoted lays (and pre-flagged manual lays).
+- `status='OVERTIME'` only if a manual fallback still finishes past `shE` (rare).
+- `status='GAP'` only when 5 < wait ≤ 30.
+- `BLOCKED` effectively never fires (kept in `normalizePlan` for backward compatibility with old saved plans).
 
-1. User clicks **Import Excel** and picks a file.
-2. Parse with **SheetJS (xlsx)** loaded from CDN (`https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js`) — added once via a `<script>` tag in `<head>`.
-3. Read first non-empty sheet → `XLSX.utils.sheet_to_json(sheet, {defval:""})`.
-4. Validate:
-   - File must contain at least one recognized header. If none, show toast: "No matching columns found. Download the template for the expected headers."
-   - Skip fully empty rows.
-   - Per-row issues (e.g. non-numeric Plies) are kept as the raw cell value so the user can fix them inline; a summary toast reports counts: "Imported 14 rows · 2 rows with warnings".
-5. **Replace vs Append prompt** (per user's choice "Ask me each time"): show a small modal with three buttons:
-   - **Replace all** → call `clearLays()` then add the parsed rows.
-   - **Append** → add the parsed rows after existing ones.
-   - **Cancel** → discard the import.
-6. For each accepted row, call `addLayRow(mappedObj)` — this reuses the existing rendering, validation, and Supabase-save paths. No scheduler/business-logic changes.
+### 5. `normalizePlan` (line 1223)
+Update the rule: `wait > 30` → mark as `MANUAL` (not `BLOCKED`) so old saved plans render consistently with the new behavior when reopened. Keep `BLOCKED` only if `cutterNum` is a real auto cutter and the lay was never promoted (defensive).
 
-## Template download
+## Files touched
 
-`Download template` builds a workbook in-memory with one header row matching the list above, then triggers a download as `lay-input-template.xlsx` (via `XLSX.writeFile`).
+- `index.html` — `generateSchedule` and `normalizePlan` only.
 
-## Out of scope
+## Verification
 
-- No backend change (parsing is client-side; rows still save through the existing "Save lays to Supabase" button).
-- No changes to scheduler, Gantt, or the schedule table.
-- No CSV support (per user choice — Excel only).
-- No column-mapping UI (headers must match the template).
+- Open the preview, regenerate the current plan, and confirm:
+  - Spreader rows are visually back-to-back (no >30-min white gaps mid-shift).
+  - Overtime hatched regions on cutters shrink toward zero; any remaining lays past 18:00 are MANUAL.
+  - Lays that previously showed BLOCKED now show MANUAL with `cutterNum='M'`.
+  - KPI strip's "Total cutter idle time" drops.
