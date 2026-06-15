@@ -1121,7 +1121,9 @@ function generateSchedule(laysIn, settings){
   for(const l of sorted){
     const requested=+l.spreader||1;
     const isManual=manualSet.has(String(l.layNo));
-    const userStart=l.spreadStart?toMin(l.spreadStart):0;
+    // Imported/typed spreadStart is not a hard constraint: each spreader must
+    // keep running back-to-back from the shift start whenever work is available.
+    const userStart=0;
 
     if(isManual){
       // Manual cut: pick a spreader that can finish inside the shift.
