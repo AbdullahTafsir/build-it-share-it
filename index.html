@@ -1145,14 +1145,8 @@ function generateSchedule(laysIn, settings){
 
     if(nC<1){
       // No auto cutters configured → fall back to manual treatment so we never crash.
-      let best=null;
-      for(let t=1;t<=NUM_TABLES;t++){
-        const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
-        const sp=planSpread(tableReady[t], shS, l.spreadDur, userStart, null, setup);
-        const ct=runUntil(sp.end, l.cutDur);
-        if(!best || ct.end<best.ct.end) best={t,sp,ct};
-      }
-      if(!best) continue;
+      const best=bestManualCandidate(l, requested, userStart);
+      if(!best){ addUnscheduled(l, requested, true); continue; }
       tableReady[best.t]=best.sp.end;
       result.push({
         ...l, spreader:best.t, requestedSpreader:requested,
@@ -1162,7 +1156,7 @@ function generateSchedule(laysIn, settings){
         cutterNum:'M', cutStart:best.ct.start, cutEnd:best.ct.end,
         cutStartTime:toTime(best.ct.start), cutEndTime:toTime(best.ct.end),
         idleDur:0, tableGap:0, tableWait:0,
-        status:best.ct.end>shE?'OVERTIME':'MANUAL', isManual:true
+        status:'MANUAL', isManual:true
       });
       continue;
     }
