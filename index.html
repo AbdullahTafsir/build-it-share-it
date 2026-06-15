@@ -2583,6 +2583,7 @@ async function exportReport(format){
   const dateStr=new Date(plan.planDate||now).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   const genStr=now.toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
   const ganttHTML=document.getElementById('ganttOuter').innerHTML;
+  const tblUtil=(plan.settings)?(_computeUtilization(plan, plan.settings).tblUtil||0):0;
 
   // Build summary table rows
   let rows='';
