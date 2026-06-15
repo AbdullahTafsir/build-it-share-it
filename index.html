@@ -1124,20 +1124,10 @@ function generateSchedule(laysIn, settings){
     const userStart=l.spreadStart?toMin(l.spreadStart):0;
 
     if(isManual){
-      // Manual cut: pick best of the 5 tables; no auto cutter used
-      let best=null;
-      for(let t=1;t<=NUM_TABLES;t++){
-        const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
-        const sp=planSpread(tableReady[t], shS, l.spreadDur, userStart, null, setup);
-        const ct=runUntil(sp.end, l.cutDur);
-        const cand={t,sp,ct};
-        if(!best
-          || ct.end<best.ct.end
-          || (ct.end===best.ct.end && t===requested && best.t!==requested)) best=cand;
-      }
-      if(!best) continue;
+      // Manual cut: pick a spreader that can finish inside the shift.
+      const best=bestManualCandidate(l, requested, userStart);
+      if(!best){ addUnscheduled(l, requested, true); continue; }
       tableReady[best.t]=best.sp.end;
-      const status=best.ct.end>shE?'OVERTIME':'MANUAL';
       result.push({
         ...l,
         spreader:best.t, requestedSpreader:requested,
@@ -1148,7 +1138,7 @@ function generateSchedule(laysIn, settings){
         cutStart:best.ct.start, cutEnd:best.ct.end,
         cutStartTime:toTime(best.ct.start), cutEndTime:toTime(best.ct.end),
         idleDur:0, tableGap:0, tableWait:0,
-        status, isManual:true
+        status:'MANUAL', isManual:true
       });
       continue;
     }
