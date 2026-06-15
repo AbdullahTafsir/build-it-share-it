@@ -1168,8 +1168,9 @@ function generateSchedule(laysIn, settings){
     // Auto: spreading starts as soon as each spreader is free. Overtime is not
     // allowed; if no in-shift option exists, the lay is left unscheduled.
     const autoCands=[];
+    // Fleece = lay-level (based on its input spreader). +3m setup wherever assigned.
+    const setup=fleeceSet.has(requested)?FLEECE_SETUP:0;
     for(let t=1;t<=NUM_TABLES;t++){
-      const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
       for(let c=0;c<nC;c++){
         const sp=planSpread(tableReady[t], tableReady[t], l.spreadDur, userStart, null, setup);
         const cutEarliest=Math.max(cutterReady[c], sp.end);
