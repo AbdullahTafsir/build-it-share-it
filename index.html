@@ -636,7 +636,7 @@ tbody tr:hover td{background:var(--gray1)}
             <div class="fleece-head">
               <div class="fleece-titles">
                 <div class="fleece-title">Fleece fabric spreaders</div>
-                <div class="fleece-sub">Adds a <b>3-minute setup</b> before every spread on the selected spreaders</div>
+                <div class="fleece-sub">Lays input on selected spreaders are treated as fleece — they get a <b>3-minute setup</b> on whichever spreader they're assigned to</div>
               </div>
             </div>
             <div class="fleece-chips" id="fleeceSprBox">
@@ -1105,8 +1105,10 @@ function generateSchedule(laysIn, settings){
 
   function bestManualCandidate(l, requested, userStart){
     let best=null;
+    // Fleece is a property of the LAY (identified by its input spreader),
+    // not the assigned table. The +3m setup follows the lay anywhere.
+    const setup=fleeceSet.has(requested)?FLEECE_SETUP:0;
     for(let t=1;t<=NUM_TABLES;t++){
-      const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
       // Spreading starts as soon as the spreader is free; never delay it to cutter timing.
       const sp=planSpread(tableReady[t], tableReady[t], l.spreadDur, userStart, null, setup);
       const ct=runUntil(sp.end, l.cutDur);
@@ -1166,8 +1168,9 @@ function generateSchedule(laysIn, settings){
     // Auto: spreading starts as soon as each spreader is free. Overtime is not
     // allowed; if no in-shift option exists, the lay is left unscheduled.
     const autoCands=[];
+    // Fleece = lay-level (based on its input spreader). +3m setup wherever assigned.
+    const setup=fleeceSet.has(requested)?FLEECE_SETUP:0;
     for(let t=1;t<=NUM_TABLES;t++){
-      const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
       for(let c=0;c<nC;c++){
         const sp=planSpread(tableReady[t], tableReady[t], l.spreadDur, userStart, null, setup);
         const cutEarliest=Math.max(cutterReady[c], sp.end);
