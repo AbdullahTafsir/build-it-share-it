@@ -1280,8 +1280,8 @@ function generateSchedule(laysIn, settings){
   };
 }
 
-// Normalize older saved/generated plans so the UI always follows the current rule:
-// table wait > 30 minutes = BLOCKED + manual-cut suggestion.
+// Normalize older saved/generated plans so the UI follows current rules:
+// no overtime; table wait > 30 minutes is manual/unscheduled, never blocked.
 function normalizePlan(plan){
   if(!plan) return plan;
   const settings=plan.settings||{};
@@ -1293,9 +1293,10 @@ function normalizePlan(plan){
     const wait=Math.round(Math.max(0, +(l.tableWait??l.tableGap??derivedWait)||0));
     const isManual=l.isManual||l.cutterNum==='M'||manualSet.has(String(l.layNo));
     let status=l.status||'OK';
-    if(isManual) status= (shiftEnd!=null&&l.cutEnd>shiftEnd)?'OVERTIME':'MANUAL';
-    else if(wait>30) status='MANUAL';
-    else if(shiftEnd!=null&&l.cutEnd>shiftEnd) status='OVERTIME';
+    if(status==='UNSCHEDULED') status='UNSCHEDULED';
+    else if(shiftEnd!=null&&l.cutEnd>shiftEnd) status='UNSCHEDULED';
+    else if(isManual) status='MANUAL';
+    else if(wait>30) status='UNSCHEDULED';
     else if(wait>5) status='GAP';
     else status='OK';
     return {...l, tableWait:wait, tableGap:wait, status, isManual: isManual || status==='MANUAL'};
