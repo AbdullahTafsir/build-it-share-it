@@ -1304,10 +1304,12 @@ function normalizePlan(plan){
     return {...l, tableWait:wait, tableGap:wait, status, isManual: isManual || status==='MANUAL'};
   });
   const summary={...(plan.summary||{})};
-  summary.totalLays=result.length;
-  summary.totalPlies=result.reduce((a,r)=>a+(+r.plies||0),0);
+  const scheduled=result.filter(r=>r.status!=='UNSCHEDULED');
+  summary.totalLays=scheduled.length;
+  summary.totalPlies=scheduled.reduce((a,r)=>a+(+r.plies||0),0);
   summary.issues=result.filter(r=>r.status!=='OK').length;
   summary.blocked=result.filter(r=>r.status==='BLOCKED').length;
+  summary.unscheduled=result.filter(r=>r.status==='UNSCHEDULED').length;
   return {...plan, result, summary};
 }
 
