@@ -2335,6 +2335,7 @@ function renderSchedule(plan){
   document.getElementById('schedBody').innerHTML=plan.result.map(l=>{
     const badgeCls=l.status==='OK'?'b-ok'
       :l.status==='OVERTIME'?'b-ot'
+      :l.status==='UNSCHEDULED'?'b-unscheduled'
       :l.status==='BLOCKED'?'b-blocked'
       :l.status==='MANUAL'?'b-manual'
       :'b-gap';
@@ -2363,8 +2364,9 @@ function renderSchedule(plan){
   }).join('');
   const s=plan.summary;
   const blockedTxt=s.blocked?` · <span style="color:var(--red);font-weight:700">${s.blocked} BLOCKED</span>`:'';
+  const unscheduledTxt=s.unscheduled?` · <span style="color:var(--red);font-weight:700">${s.unscheduled} UNSCHEDULED</span>`:'';
   document.getElementById('schedFooter').innerHTML=
-    `<strong>${s.totalLays}</strong> lays · <strong>${(s.totalPlies||0).toLocaleString()}</strong> plies · Util: <strong>${s.utilization}%</strong> · Idle: <strong>${durStr(s.totalIdleTime)}</strong>${blockedTxt}`;
+    `<strong>${s.totalLays}</strong> lays · <strong>${(s.totalPlies||0).toLocaleString()}</strong> plies · Util: <strong>${s.utilization}%</strong> · Idle: <strong>${durStr(s.totalIdleTime)}</strong>${blockedTxt}${unscheduledTxt}`;
 }
 
 // Switch a BLOCKED lay to manual cutting and re-run the scheduler locally.
