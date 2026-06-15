@@ -225,6 +225,7 @@ tbody tr:hover td{background:var(--gray1)}
 .b-teal{background:var(--teal-lt);color:var(--teal)}
 .b-blocked{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
 .b-manual{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.b-unscheduled{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
 .btn-mini{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;
   background:#fff;border:1px solid var(--red);color:var(--red);cursor:pointer;margin-left:6px}
 .btn-mini:hover{background:var(--red);color:#fff}
@@ -1023,7 +1024,7 @@ function generateSchedule(laysIn, settings){
   const shS=toMin(settings.shiftStart), shE=toMin(settings.shiftEnd);
   const nC=settings.numCutters;
   const NUM_TABLES=5;
-  const WAIT_LIMIT=30; // BLOCKED threshold (minutes of table waiting)
+  const WAIT_LIMIT=30; // table wait threshold: switch to manual, never overtime
   const manualSet=new Set((settings.manualLays||[]).map(String));
   const fleeceSet=new Set((settings.fleeceSpreaders||[]).map(Number));
   const FLEECE_SETUP=3; // minutes of spreader setup before every fleece spread
@@ -1085,26 +1086,50 @@ function generateSchedule(laysIn, settings){
   const cutTimePerCutter=Array(nC).fill(0);
   const idlePerCutter=Array(nC).fill(0);
 
+  function fitsShift(sp, ct){ return sp.end<=shE && ct.end<=shE; }
+
+  function addUnscheduled(l, requested, isManual){
+    result.push({
+      ...l,
+      spreader:requested, requestedSpreader:requested,
+      spreadStartMin:shE, spreadEndMin:shE,
+      spreadStartTime:toTime(shE), spreadEndTime:toTime(shE),
+      setupStartMin:shE, setupDur:0,
+      cutterNum:isManual?'M':'-',
+      cutStart:shE, cutEnd:shE,
+      cutStartTime:toTime(shE), cutEndTime:toTime(shE),
+      idleDur:0, tableGap:0, tableWait:0,
+      status:'UNSCHEDULED', isManual:!!isManual
+    });
+  }
+
+  function bestManualCandidate(l, requested, userStart){
+    let best=null;
+    for(let t=1;t<=NUM_TABLES;t++){
+      const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
+      // Spreading starts as soon as the spreader is free; never delay it to cutter timing.
+      const sp=planSpread(tableReady[t], tableReady[t], l.spreadDur, userStart, null, setup);
+      const ct=runUntil(sp.end, l.cutDur);
+      if(!fitsShift(sp, ct)) continue;
+      const spreaderGap=Math.max(0, sp.setupStart - tableReady[t]);
+      const cost=spreaderGap*10000 + tableReady[t]*2 + ct.end*0.05 + (t===requested?0:0.1);
+      if(!best || cost<best.cost) best={t,sp,ct,cost};
+    }
+    return best;
+  }
+
   for(const l of sorted){
     const requested=+l.spreader||1;
     const isManual=manualSet.has(String(l.layNo));
-    const userStart=l.spreadStart?toMin(l.spreadStart):0;
+    // Imported/typed spreadStart is not a hard constraint: each spreader must
+    // keep running back-to-back from the shift start whenever work is available.
+    const userStart=0;
 
     if(isManual){
-      // Manual cut: pick best of the 5 tables; no auto cutter used
-      let best=null;
-      for(let t=1;t<=NUM_TABLES;t++){
-        const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
-        const sp=planSpread(tableReady[t], shS, l.spreadDur, userStart, null, setup);
-        const ct=runUntil(sp.end, l.cutDur);
-        const cand={t,sp,ct};
-        if(!best
-          || ct.end<best.ct.end
-          || (ct.end===best.ct.end && t===requested && best.t!==requested)) best=cand;
-      }
-      if(!best) continue;
+      // Manual cut: pick a spreader that can finish inside the shift.
+      const best=bestManualCandidate(l, requested, userStart);
+      if(!best){ addUnscheduled(l, requested, true); continue; }
       tableReady[best.t]=best.sp.end;
-      const status=best.ct.end>shE?'OVERTIME':'MANUAL';
       result.push({
         ...l,
         spreader:best.t, requestedSpreader:requested,
@@ -1115,21 +1140,15 @@ function generateSchedule(laysIn, settings){
         cutStart:best.ct.start, cutEnd:best.ct.end,
         cutStartTime:toTime(best.ct.start), cutEndTime:toTime(best.ct.end),
         idleDur:0, tableGap:0, tableWait:0,
-        status, isManual:true
+        status:'MANUAL', isManual:true
       });
       continue;
     }
 
     if(nC<1){
       // No auto cutters configured → fall back to manual treatment so we never crash.
-      let best=null;
-      for(let t=1;t<=NUM_TABLES;t++){
-        const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
-        const sp=planSpread(tableReady[t], shS, l.spreadDur, userStart, null, setup);
-        const ct=runUntil(sp.end, l.cutDur);
-        if(!best || ct.end<best.ct.end) best={t,sp,ct};
-      }
-      if(!best) continue;
+      const best=bestManualCandidate(l, requested, userStart);
+      if(!best){ addUnscheduled(l, requested, true); continue; }
       tableReady[best.t]=best.sp.end;
       result.push({
         ...l, spreader:best.t, requestedSpreader:requested,
@@ -1139,61 +1158,61 @@ function generateSchedule(laysIn, settings){
         cutterNum:'M', cutStart:best.ct.start, cutEnd:best.ct.end,
         cutStartTime:toTime(best.ct.start), cutEndTime:toTime(best.ct.end),
         idleDur:0, tableGap:0, tableWait:0,
-        status:best.ct.end>shE?'OVERTIME':'MANUAL', isManual:true
+        status:'MANUAL', isManual:true
       });
       continue;
     }
 
-    // Auto: evaluate every (table, cutter) pair. Hard constraint: prefer
-    // options that finish within the shift; load-balance across all 5 tables
-    // so spreaders 3/4/5 aren't left idle while 1/2 burn into overtime.
+    // Auto: spreading starts as soon as each spreader is free. Overtime is not
+    // allowed; if no in-shift option exists, the lay is left unscheduled.
     const autoCands=[];
     for(let t=1;t<=NUM_TABLES;t++){
       const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
       for(let c=0;c<nC;c++){
-        const sp=planSpread(tableReady[t], cutterReady[c], l.spreadDur, userStart, null, setup);
+        const sp=planSpread(tableReady[t], tableReady[t], l.spreadDur, userStart, null, setup);
         const cutEarliest=Math.max(cutterReady[c], sp.end);
         const ct=runUntil(cutEarliest, l.cutDur);
+        if(!fitsShift(sp, ct)) continue;
         const wait=Math.max(0, ct.start - sp.end);
         const spreaderGap=Math.max(0, sp.setupStart - tableReady[t]);
-        const overtime=Math.max(0, ct.end - shE);
-        const tableLoad=tableReady[t]-shS; // already-scheduled minutes on this table
-        // Load-balance: tableLoad pushes new lays to the least-busy spreader.
-        // Overtime is dominant so we always prefer in-shift options.
-        const cost = overtime*1000
-                   + tableLoad*1.0
+        const cutIdle=Math.max(0, ct.start - cutterReady[c]);
+        // Back-to-back spreader use is dominant. Earlier-free spreaders are
+        // selected before already-loaded ones, keeping all five tables active.
+        const cost = spreaderGap*10000
+                   + (tableReady[t]-shS)*3.0
                    + wait*0.8
-                   + spreaderGap*0.4
-                   + ct.end*0.05
+                   + cutIdle*0.4
+                   + ct.end*0.03
                    + (t===requested ? 0 : 0.1);
-        autoCands.push({t,c,sp,ct,wait,overtime,cost});
+        autoCands.push({t,c,sp,ct,wait,cost});
       }
     }
-    // Restrict to in-shift options when any exist.
-    const feasible=autoCands.filter(x=>x.overtime===0);
-    const pool=feasible.length?feasible:autoCands;
     let best=null;
-    for(const cand of pool){ if(!best || cand.cost<best.cost) best=cand; }
-    if(!best) continue;
+    for(const cand of autoCands){ if(!best || cand.cost<best.cost) best=cand; }
+    if(!best){
+      const mbest=bestManualCandidate(l, requested, userStart);
+      if(!mbest){ addUnscheduled(l, requested, false); continue; }
+      tableReady[mbest.t]=mbest.sp.end;
+      result.push({
+        ...l,
+        spreader:mbest.t, requestedSpreader:requested,
+        spreadStartMin:mbest.sp.start, spreadEndMin:mbest.sp.end,
+        spreadStartTime:toTime(mbest.sp.start), spreadEndTime:toTime(mbest.sp.end),
+        setupStartMin:mbest.sp.setupStart, setupDur:mbest.sp.setupDur,
+        cutterNum:'M',
+        cutStart:mbest.ct.start, cutEnd:mbest.ct.end,
+        cutStartTime:toTime(mbest.ct.start), cutEndTime:toTime(mbest.ct.end),
+        idleDur:0, tableGap:0, tableWait:0,
+        status:'MANUAL', isManual:true
+      });
+      continue;
+    }
 
-    // Promote to manual when: (a) no in-shift auto exists, or (b) best wait > 30m.
-    const needManual = best.wait>WAIT_LIMIT || (feasible.length===0 && best.overtime>0);
-    if(needManual){
-      let mbest=null;
-      for(let t=1;t<=NUM_TABLES;t++){
-        const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
-        const sp=planSpread(tableReady[t], shS, l.spreadDur, userStart, null, setup);
-        const ct=runUntil(sp.end, l.cutDur);
-        const spreaderGap=Math.max(0, sp.setupStart - tableReady[t]);
-        const overtime=Math.max(0, ct.end - shE);
-        const tableLoad=tableReady[t]-shS;
-        const cost = overtime*1000 + tableLoad*1.0 + spreaderGap*0.4 + ct.end*0.05 + (t===requested?0:0.1);
-        if(!mbest || cost<mbest.cost) mbest={t,sp,ct,cost,overtime};
-      }
-      // Only take manual route if it's actually better (fewer overtime minutes or comparable).
-      if(mbest && (mbest.overtime<=best.overtime || best.wait>WAIT_LIMIT)){
+    // If a spread lay waits over 30 minutes for an auto cutter, cut it manually.
+    if(best.wait>WAIT_LIMIT){
+      const mbest=bestManualCandidate(l, requested, userStart);
+      if(mbest){
         tableReady[mbest.t]=mbest.sp.end;
-        const status=mbest.ct.end>shE?'OVERTIME':'MANUAL';
         result.push({
           ...l,
           spreader:mbest.t, requestedSpreader:requested,
@@ -1204,10 +1223,12 @@ function generateSchedule(laysIn, settings){
           cutStart:mbest.ct.start, cutEnd:mbest.ct.end,
           cutStartTime:toTime(mbest.ct.start), cutEndTime:toTime(mbest.ct.end),
           idleDur:0, tableGap:0, tableWait:0,
-          status, isManual:true
+          status:'MANUAL', isManual:true
         });
         continue;
       }
+      addUnscheduled(l, requested, false);
+      continue;
     }
 
     const {t,c,sp,ct,wait}=best;
@@ -1221,8 +1242,7 @@ function generateSchedule(laysIn, settings){
     tableReady[t]=sp.end;
 
     let status;
-    if(ct.end>shE) status='OVERTIME';
-    else if(wait>5) status='GAP';
+    if(wait>5) status='GAP';
     else status='OK';
 
     result.push({
@@ -1239,6 +1259,7 @@ function generateSchedule(laysIn, settings){
     });
   }
 
+  const scheduled=result.filter(r=>r.status!=='UNSCHEDULED');
   const totalCuttingTime=cutTimePerCutter.reduce((a,b)=>a+b,0);
   const totalIdleTime=idlePerCutter.reduce((a,b)=>a+b,0);
   const totalBrk=breaks.reduce((a,b)=>a+(b.to-b.from),0);
@@ -1246,22 +1267,23 @@ function generateSchedule(laysIn, settings){
   const utilization=Math.round(totalCuttingTime/avail*100);
   const issues=result.filter(r=>r.status!=='OK').length;
   const blocked=result.filter(r=>r.status==='BLOCKED').length;
+  const unscheduled=result.filter(r=>r.status==='UNSCHEDULED').length;
 
   return {
     result, idleWindows,
     summary:{
       shiftStart:settings.shiftStart, shiftEnd:settings.shiftEnd, numCutters:nC,
-      totalLays:result.length, totalPlies:result.reduce((a,r)=>a+(+r.plies||0),0),
-      totalMarkerLength:result.reduce((a,r)=>a+(+r.markerLength||0),0),
-      totalYards:result.reduce((a,r)=>a+(+r.totalYards||0),0),
-      totalCuttingTime, totalIdleTime, utilization, issues, blocked,
+      totalLays:scheduled.length, totalPlies:scheduled.reduce((a,r)=>a+(+r.plies||0),0),
+      totalMarkerLength:scheduled.reduce((a,r)=>a+(+r.markerLength||0),0),
+      totalYards:scheduled.reduce((a,r)=>a+(+r.totalYards||0),0),
+      totalCuttingTime, totalIdleTime, utilization, issues, blocked, unscheduled,
       cutTimePerCutter, idlePerCutter
     }
   };
 }
 
-// Normalize older saved/generated plans so the UI always follows the current rule:
-// table wait > 30 minutes = BLOCKED + manual-cut suggestion.
+// Normalize older saved/generated plans so the UI follows current rules:
+// no overtime; table wait > 30 minutes is manual/unscheduled, never blocked.
 function normalizePlan(plan){
   if(!plan) return plan;
   const settings=plan.settings||{};
@@ -1273,18 +1295,21 @@ function normalizePlan(plan){
     const wait=Math.round(Math.max(0, +(l.tableWait??l.tableGap??derivedWait)||0));
     const isManual=l.isManual||l.cutterNum==='M'||manualSet.has(String(l.layNo));
     let status=l.status||'OK';
-    if(isManual) status= (shiftEnd!=null&&l.cutEnd>shiftEnd)?'OVERTIME':'MANUAL';
-    else if(wait>30) status='MANUAL';
-    else if(shiftEnd!=null&&l.cutEnd>shiftEnd) status='OVERTIME';
+    if(status==='UNSCHEDULED') status='UNSCHEDULED';
+    else if(shiftEnd!=null&&l.cutEnd>shiftEnd) status='UNSCHEDULED';
+    else if(isManual) status='MANUAL';
+    else if(wait>30) status='UNSCHEDULED';
     else if(wait>5) status='GAP';
     else status='OK';
     return {...l, tableWait:wait, tableGap:wait, status, isManual: isManual || status==='MANUAL'};
   });
   const summary={...(plan.summary||{})};
-  summary.totalLays=result.length;
-  summary.totalPlies=result.reduce((a,r)=>a+(+r.plies||0),0);
+  const scheduled=result.filter(r=>r.status!=='UNSCHEDULED');
+  summary.totalLays=scheduled.length;
+  summary.totalPlies=scheduled.reduce((a,r)=>a+(+r.plies||0),0);
   summary.issues=result.filter(r=>r.status!=='OK').length;
   summary.blocked=result.filter(r=>r.status==='BLOCKED').length;
+  summary.unscheduled=result.filter(r=>r.status==='UNSCHEDULED').length;
   return {...plan, result, summary};
 }
 
@@ -2310,6 +2335,7 @@ function renderSchedule(plan){
   document.getElementById('schedBody').innerHTML=plan.result.map(l=>{
     const badgeCls=l.status==='OK'?'b-ok'
       :l.status==='OVERTIME'?'b-ot'
+      :l.status==='UNSCHEDULED'?'b-unscheduled'
       :l.status==='BLOCKED'?'b-blocked'
       :l.status==='MANUAL'?'b-manual'
       :'b-gap';
@@ -2338,8 +2364,9 @@ function renderSchedule(plan){
   }).join('');
   const s=plan.summary;
   const blockedTxt=s.blocked?` · <span style="color:var(--red);font-weight:700">${s.blocked} BLOCKED</span>`:'';
+  const unscheduledTxt=s.unscheduled?` · <span style="color:var(--red);font-weight:700">${s.unscheduled} UNSCHEDULED</span>`:'';
   document.getElementById('schedFooter').innerHTML=
-    `<strong>${s.totalLays}</strong> lays · <strong>${(s.totalPlies||0).toLocaleString()}</strong> plies · Util: <strong>${s.utilization}%</strong> · Idle: <strong>${durStr(s.totalIdleTime)}</strong>${blockedTxt}`;
+    `<strong>${s.totalLays}</strong> lays · <strong>${(s.totalPlies||0).toLocaleString()}</strong> plies · Util: <strong>${s.utilization}%</strong> · Idle: <strong>${durStr(s.totalIdleTime)}</strong>${blockedTxt}${unscheduledTxt}`;
 }
 
 // Switch a BLOCKED lay to manual cutting and re-run the scheduler locally.
