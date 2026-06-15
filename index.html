@@ -1024,7 +1024,7 @@ function generateSchedule(laysIn, settings){
   const shS=toMin(settings.shiftStart), shE=toMin(settings.shiftEnd);
   const nC=settings.numCutters;
   const NUM_TABLES=5;
-  const WAIT_LIMIT=30; // BLOCKED threshold (minutes of table waiting)
+  const WAIT_LIMIT=30; // table wait threshold: switch to manual, never overtime
   const manualSet=new Set((settings.manualLays||[]).map(String));
   const fleeceSet=new Set((settings.fleeceSpreaders||[]).map(Number));
   const FLEECE_SETUP=3; // minutes of spreader setup before every fleece spread
@@ -1085,6 +1085,38 @@ function generateSchedule(laysIn, settings){
   const idleWindows=Array.from({length:nC},()=>[]);
   const cutTimePerCutter=Array(nC).fill(0);
   const idlePerCutter=Array(nC).fill(0);
+
+  function fitsShift(sp, ct){ return sp.end<=shE && ct.end<=shE; }
+
+  function addUnscheduled(l, requested, isManual){
+    result.push({
+      ...l,
+      spreader:requested, requestedSpreader:requested,
+      spreadStartMin:shE, spreadEndMin:shE,
+      spreadStartTime:toTime(shE), spreadEndTime:toTime(shE),
+      setupStartMin:shE, setupDur:0,
+      cutterNum:isManual?'M':'-',
+      cutStart:shE, cutEnd:shE,
+      cutStartTime:toTime(shE), cutEndTime:toTime(shE),
+      idleDur:0, tableGap:0, tableWait:0,
+      status:'UNSCHEDULED', isManual:!!isManual
+    });
+  }
+
+  function bestManualCandidate(l, requested, userStart){
+    let best=null;
+    for(let t=1;t<=NUM_TABLES;t++){
+      const setup=fleeceSet.has(t)?FLEECE_SETUP:0;
+      // Spreading starts as soon as the spreader is free; never delay it to cutter timing.
+      const sp=planSpread(tableReady[t], tableReady[t], l.spreadDur, userStart, null, setup);
+      const ct=runUntil(sp.end, l.cutDur);
+      if(!fitsShift(sp, ct)) continue;
+      const spreaderGap=Math.max(0, sp.setupStart - tableReady[t]);
+      const cost=spreaderGap*10000 + tableReady[t]*2 + ct.end*0.05 + (t===requested?0:0.1);
+      if(!best || cost<best.cost) best={t,sp,ct,cost};
+    }
+    return best;
+  }
 
   for(const l of sorted){
     const requested=+l.spreader||1;
